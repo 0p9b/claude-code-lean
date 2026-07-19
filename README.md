@@ -5,55 +5,60 @@ Cut Claude Code CLI startup context. Keep six tools. Pick your system prompt.
 ## Install (one command)
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh?$(date +%s)" | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | bash
 ```
 
-(The `?$(date +%s)` avoids GitHub’s raw CDN serving a stale script.)
+You should see a full menu like this (not just `1 / 2 / q`):
 
-You’ll see a menu explaining both options, then:
+```text
+========================================
+  Claude Code Lean installer
+========================================
 
-| Choice | What you get | After install, run | Typical `/context` |
-|---|---|---|---|
-| **1 — Ultra Lean** | Tiny custom system prompt | `claude-lean` | ~4.5–5k |
-| **2 — Regular Lean** | Claude Code’s default lean system prompt | `claude` | ~6.5k |
+  1) Ultra Lean   → run claude-lean   (~4.5–5k context)
+  2) Regular Lean → run claude        (~6.5k context)
+  q) Quit
+```
 
-Same six tools either way. Same settings. Only the system prompt differs (~1.8k).
+| Choice | What you get | After install, run |
+|---|---|---|
+| **1 — Ultra Lean** | Tiny custom system prompt | `claude-lean` |
+| **2 — Regular Lean** | Claude Code’s default lean system prompt | `claude` |
+
+Same six tools either way. Only the system prompt differs (~1.8k).
 
 Skip the menu (optional):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh?$(date +%s)" | CLAUDE_LEAN_MODE=ultra bash
+curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | CLAUDE_LEAN_MODE=ultra bash
 # or
-curl -fsSL "https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh?$(date +%s)" | CLAUDE_LEAN_MODE=regular bash
+curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | CLAUDE_LEAN_MODE=regular bash
+```
+
+If the menu looks wrong/outdated, force a fresh copy:
+
+```bash
+curl -fsSL "https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh" | bash
+# or clone (always latest):
+git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-code-lean && bash /tmp/claude-code-lean/install.sh
 ```
 
 ## What you get
 
-**Enabled tools**
+**Enabled tools:** `Bash` · `Read` · `Write` · `Edit` · `WebSearch` · `WebFetch`
 
-- `Bash` · `Read` · `Write` · `Edit` · `WebSearch` · `WebFetch`
+**Disabled:** MCP, skills, workflows, agents, plan mode, cron, tasks, LSP, auto memory, etc.
 
-**Disabled**
-
-- MCP / Claude.ai connectors
-- Skills, workflows, agents, plan mode, cron, tasks, LSP, and the rest
-- Auto memory / CLAUDE.md injection
-
-**Defaults**
-
-- Effort: `medium`
-- OAuth login still works (no `--bare`)
+**Defaults:** effort `medium`, OAuth login still works (no `--bare`)
 
 ## After install
 
 ```bash
-claude-lean   # if you picked Ultra Lean
-claude        # if you picked Regular Lean
+claude-lean   # Ultra Lean
+claude        # Regular Lean
 ```
 
-Then run `/context` inside the session.
-
-If `claude-lean` is “command not found”, add this to your shell config:
+Then `/context`. If `claude-lean` is missing from PATH:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
@@ -61,26 +66,9 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ## Requirements
 
-- [Claude Code CLI](https://code.claude.com/docs/en/overview) installed
+- [Claude Code CLI](https://code.claude.com/docs/en/overview)
 - `curl`
-
-## Customize later
-
-| Goal | Edit |
-|---|---|
-| Ultra prompt text | `~/.claude/system-prompt-lean.txt` |
-| Tool allow/deny | `~/.claude/settings.json` + `~/.local/bin/claude-lean` |
-| Effort | `effortLevel` in settings + `--effort` in `claude-lean` |
-
-Existing files are backed up as `*.bak.<timestamp>` before overwrite.
-
-## Uninstall
-
-```bash
-rm -f ~/.local/bin/claude-lean
-# Optionally restore: ls ~/.claude/settings.json.bak.*
-```
 
 ## License
 
-MIT — no keys or account data in this repo.
+MIT

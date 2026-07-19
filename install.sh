@@ -4,12 +4,14 @@
 #   curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash
 set -euo pipefail
 
-REPO_RAW="${CLAUDE_LEAN_RAW_BASE:-https://raw.githubusercontent.com/0p9b/claude-code-lean/main}"
+# Prefer jsDelivr — raw.githubusercontent.com often serves stale main for minutes.
+REPO_RAW="${CLAUDE_LEAN_RAW_BASE:-https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main}"
 CLAUDE_DIR="${HOME}/.claude"
 BIN_DIR="${HOME}/.local/bin"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
+INSTALLER_VERSION="2026-07-19-3"
 
 # UI must go to the real terminal when piped from curl (stdout may be captured).
 ui() {
@@ -66,14 +68,10 @@ resolve_sources() {
 
   mkdir -p "$WORKDIR/config" "$WORKDIR/bin" "$WORKDIR/templates/output-styles"
 
-  # Bust raw.githubusercontent.com CDN cache (max-age=300).
-  local bust
-  bust="$(date +%s)"
-
-  curl -fsSL "$REPO_RAW/config/settings.json?${bust}" -o "$WORKDIR/config/settings.json"
-  curl -fsSL "$REPO_RAW/bin/claude-lean?${bust}" -o "$WORKDIR/bin/claude-lean"
-  curl -fsSL "$REPO_RAW/templates/system-prompt-lean.txt?${bust}" -o "$WORKDIR/templates/system-prompt-lean.txt"
-  curl -fsSL "$REPO_RAW/templates/output-styles/lean.md?${bust}" -o "$WORKDIR/templates/output-styles/lean.md"
+  curl -fsSL "$REPO_RAW/config/settings.json" -o "$WORKDIR/config/settings.json"
+  curl -fsSL "$REPO_RAW/bin/claude-lean" -o "$WORKDIR/bin/claude-lean"
+  curl -fsSL "$REPO_RAW/templates/system-prompt-lean.txt" -o "$WORKDIR/templates/system-prompt-lean.txt"
+  curl -fsSL "$REPO_RAW/templates/output-styles/lean.md" -o "$WORKDIR/templates/output-styles/lean.md"
 
   chmod +x "$WORKDIR/bin/claude-lean"
 }
@@ -214,6 +212,8 @@ main() {
   if ! command -v claude >/dev/null 2>&1; then
     err "Claude Code CLI ('claude') not found on PATH. Install it first: https://code.claude.com/docs"
   fi
+
+  ui "Installer version: ${INSTALLER_VERSION}"
 
   resolve_sources
   choose_mode
