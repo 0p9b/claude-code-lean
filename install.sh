@@ -12,22 +12,39 @@ BIN_DIR="${HOME}/.local/bin"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-5"
+INSTALLER_VERSION="2026-07-19-6"
+
+TUI_IN="/dev/tty"
+TUI_OUT="/dev/tty"
+
+tui_available() {
+  [[ -r "$TUI_IN" && -w "$TUI_OUT" ]] 2>/dev/null
+}
 
 # UI must go to the real terminal when piped from curl (stdout may be captured).
 ui() {
-  if [[ -w /dev/tty ]]; then
-    printf '%s\n' "$*" >/dev/tty
-  else
-    printf '%s\n' "$*" >&2
+  if tui_available && printf '%s\n' "$*" >"$TUI_OUT" 2>/dev/null; then
+    return 0
   fi
+  printf '%s\n' "$*" >&2
 }
 
 ui_n() {
-  if [[ -w /dev/tty ]]; then
-    printf '%s' "$*" >/dev/tty
-  else
-    printf '%s' "$*" >&2
+  if tui_available && printf '%s' "$*" >"$TUI_OUT" 2>/dev/null; then
+    return 0
+  fi
+  printf '%s' "$*" >&2
+}
+
+tui_hide_cursor() {
+  if tui_available; then
+    printf '\033[?25l' >"$TUI_OUT"
+  fi
+}
+
+tui_show_cursor() {
+  if tui_available; then
+    printf '\033[?25h' >"$TUI_OUT"
   fi
 }
 
@@ -40,6 +57,78 @@ prompt_read() {
     read -r _reply
   fi
   printf '%s\n' "$_reply"
+}
+
+# Interactive menu: arrow keys + Enter, or press 1-3 / q to pick immediately.
+# Prints the chosen index (0-based) to stdout.
+menu_select() {
+  local -a options=("$@")
+  local count=${#options[@]}
+  local selected=0
+  local menu_height=$((count + 2))
+  local i key seq
+
+  if ! tui_available; then
+    return 1
+  fi
+
+  draw_menu() {
+    for ((i = 0; i < count; i++)); do
+      if ((i == selected)); then
+        printf '  \033[7m› %s\033[0m\033[K\n' "${options[i]}" >"$TUI_OUT"
+      else
+        printf '    %s\033[K\n' "${options[i]}" >"$TUI_OUT"
+      fi
+    done
+    printf '\n\033[K' >"$TUI_OUT"
+    printf '  \033[2m↑↓ move · Enter confirm · 1-3 or q to pick\033[0m\033[K\n' >"$TUI_OUT"
+  }
+
+  redraw_menu() {
+    printf '\033[%dA' "$menu_height" >"$TUI_OUT"
+    draw_menu
+  }
+
+  draw_menu
+  tui_hide_cursor
+
+  while true; do
+    IFS= read -rsn1 key <"$TUI_IN" || break
+
+    case "$key" in
+      $'\e')
+        IFS= read -rsn2 -t 0.1 seq <"$TUI_IN" 2>/dev/null || true
+        case "$seq" in
+          '[A' | '[B' | 'OA' | 'OB')
+            if [[ "$seq" == '[A' || "$seq" == 'OA' ]]; then
+              ((selected > 0)) && ((selected--))
+            else
+              ((selected < count - 1)) && ((selected++))
+            fi
+            redraw_menu
+            ;;
+        esac
+        ;;
+      '' | $'\n' | $'\r')
+        tui_show_cursor
+        printf '%s\n' "$selected"
+        return 0
+        ;;
+      [1-3])
+        tui_show_cursor
+        printf '%s\n' "$((key - 1))"
+        return 0
+        ;;
+      q | Q)
+        tui_show_cursor
+        printf '%s\n' "$((count - 1))"
+        return 0
+        ;;
+    esac
+  done
+
+  tui_show_cursor
+  return 1
 }
 
 cleanup() {
@@ -156,79 +245,87 @@ install_both() {
 
 choose_mode() {
   local choice="${CLAUDE_LEAN_MODE:-}"
+  local -a menu_labels=(
+    "1) Ultra Lean only — settings + claude-lean (~4.5–5k)"
+    "2) Regular Lean only — settings only, use: claude (~6.5k)"
+    "3) Both (recommended) — claude-lean OR claude per session"
+    "q) Quit without installing"
+  )
+  local -a menu_modes=(ultra regular both quit)
+  local idx
 
   if [[ -n "$choice" ]]; then
     SELECTED_MODE="$choice"
     return
   fi
 
-  # Always print the menu to the real terminal (never stdout-only).
-  local menu_out="/dev/tty"
-  [[ -w /dev/tty ]] || menu_out="/dev/stderr"
-  cat <<'MENU' >"$menu_out"
+  ui ""
+  ui "========================================"
+  ui "  Claude Code Lean installer"
+  ui "========================================"
+  ui ""
+  ui "All options use the SAME lean settings and these 6 tools:"
+  ui "  Bash · Read · Write · Edit · WebSearch · WebFetch"
+  ui "Everything else is disabled. Effort defaults to medium."
+  ui ""
+  ui "Choose what to install:"
+  ui ""
 
-========================================
-  Claude Code Lean installer
-========================================
+  if tui_available && idx="$(menu_select "${menu_labels[@]}")"; then
+    :
+  else
+    while true; do
+      ui_n "Type 1 (Ultra), 2 (Regular), 3 (Both), or q to quit: "
+      choice="$(prompt_read)"
+      case "$choice" in
+        1 | ultra | Ultra | ULTRA)
+          idx=0
+          break
+          ;;
+        2 | regular | Regular | REGULAR)
+          idx=1
+          break
+          ;;
+        3 | both | Both | BOTH)
+          idx=2
+          break
+          ;;
+        q | Q | quit | Quit)
+          idx=3
+          break
+          ;;
+        *)
+          ui "Hmm, \"$choice\" is not valid."
+          ui "Please type:  1 = Ultra  |  2 = Regular  |  3 = Both  |  q = Quit"
+          ;;
+      esac
+    done
+  fi
 
-All options use the SAME lean settings and these 6 tools:
-  Bash · Read · Write · Edit · WebSearch · WebFetch
-Everything else is disabled. Effort defaults to medium.
-
-Choose what to install:
-
-  1) Ultra Lean only
-     Installs settings + the claude-lean launcher.
-     System prompt: tiny custom override (lowest context, ~4.5–5k)
-     After install, run:  claude-lean
-
-  2) Regular Lean only
-     Installs settings only (no claude-lean command).
-     System prompt: Claude Code default lean prompt (~6.5k)
-     After install, run:  claude
-
-  3) Both  (like a full local setup — recommended)
-     Installs settings + claude-lean.
-     Then YOU pick per session:
-       claude-lean  → Ultra Lean (custom system prompt)
-       claude       → Regular Lean (default system prompt)
-
-  q) Quit without installing
-
-MENU
-
-  while true; do
-    ui_n "Type 1 (Ultra), 2 (Regular), 3 (Both), or q to quit: "
-    choice="$(prompt_read)"
-    case "$choice" in
-      1|ultra|Ultra|ULTRA)
-        SELECTED_MODE="ultra"
-        ui ""
-        ui "→ OK: installing Ultra Lean only (use: claude-lean)"
-        return
-        ;;
-      2|regular|Regular|REGULAR)
-        SELECTED_MODE="regular"
-        ui ""
-        ui "→ OK: installing Regular Lean only (use: claude)"
-        return
-        ;;
-      3|both|Both|BOTH)
-        SELECTED_MODE="both"
-        ui ""
-        ui "→ OK: installing Both (use: claude-lean OR claude)"
-        return
-        ;;
-      q|Q|quit|Quit)
-        ui "Cancelled."
-        exit 0
-        ;;
-      *)
-        ui "Hmm, \"$choice\" is not valid."
-        ui "Please type:  1 = Ultra  |  2 = Regular  |  3 = Both  |  q = Quit"
-        ;;
-    esac
-  done
+  case "${menu_modes[idx]}" in
+    ultra)
+      SELECTED_MODE="ultra"
+      ui ""
+      ui "→ OK: installing Ultra Lean only (use: claude-lean)"
+      ;;
+    regular)
+      SELECTED_MODE="regular"
+      ui ""
+      ui "→ OK: installing Regular Lean only (use: claude)"
+      ;;
+    both)
+      SELECTED_MODE="both"
+      ui ""
+      ui "→ OK: installing Both (use: claude-lean OR claude)"
+      ;;
+    quit)
+      ui "Cancelled."
+      exit 0
+      ;;
+    *)
+      err "Unknown menu selection: ${idx}"
+      ;;
+  esac
 }
 
 main() {
