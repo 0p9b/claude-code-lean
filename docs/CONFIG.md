@@ -2,17 +2,27 @@
 
 How Claude Code Lean strips context, what stays enabled, and how profiles compare.
 
-## Profile overview
+## Four profiles (+ Both)
 
-| Profile | System prompt | Tools | Thinking | Startup context | Launcher |
-|--------|----------------|-------|----------|-----------------|----------|
-| **Ultra Lean** | Custom minimal (`.`) | 6 core | Off | ~4.5–5k | `claude-lean` |
-| **Regular Lean** | Claude Code default lean | 6 core | Off | ~6.5k | `claude` |
-| **Balanced** | Claude Code default lean | 6 + Glob/Grep/TodoWrite | **On** | ~7–9k | `claude` |
-| **Both** | Pick Ultra or Regular | 6 core | Off | Either | both commands |
-| **Custom** | You choose | Wizard packs | Optional | Varies | Wizard-driven |
+| # | Profile | System prompt | Tools | Thinking | Startup | Launcher |
+|---|---------|----------------|-------|----------|---------|----------|
+| 1 | **Ultra Lean** | Custom minimal (`.`) | 6 core | Off | ~4.5–5k | `claude-lean` |
+| 2 | **Regular Lean** | Claude Code default lean | 6 core | Off | ~6.5k | `claude` |
+| 3 | **Balanced** ★ | Claude Code default lean | 6 + Glob/Grep/TodoWrite | **On** | ~7–9k | `claude` |
+| 4 | **Both** | Ultra or Regular | 6 core | Off | Either | both commands |
+| 5 | **Custom** | You choose | Wizard packs | Optional | Varies | Wizard-driven |
 
-**Ultra is the most stripped-down at launch.** Regular keeps the same lean deny list — the ~1.8k gap is mostly the product system prompt. **Balanced** sits between Regular and Custom: still major savings, but code search + todos + thinking.
+**Ultra → Regular → Balanced → Custom** are the four profiles. Option 4 installs Ultra + Regular launchers together. **Balanced** is the recommended everyday default.
+
+## Files to edit later
+
+| Path | Purpose |
+|------|---------|
+| `~/.claude/settings.json` | Deny list, effort, thinking, memory, disables |
+| `~/.claude/output-styles/lean.md` | Short output style |
+| `~/.local/bin/claude-lean` | Ultra launcher |
+| `~/.claude/system-prompt-lean.txt` | Ultra system prompt text |
+| `~/.claude/claude-lean.conf` | Custom tool list for `claude-lean` |
 
 ---
 

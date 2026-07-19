@@ -88,10 +88,15 @@ assert_executable "${REPO_ROOT}/config/generate-settings.py" "generate-settings.
 assert_file "${REPO_ROOT}/lib/custom-wizard.sh" "custom-wizard.sh present"
 assert_file "${REPO_ROOT}/docs/index.html" "GitHub Pages index.html present"
 assert_file "${REPO_ROOT}/docs/config.html" "GitHub Pages config.html present"
-assert_contains "$(cat "${REPO_ROOT}/docs/index.html")" "Five ways to install" "website lists five install modes"
-assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-13"' "installer version 2026-07-19-13"
+assert_contains "$(cat "${REPO_ROOT}/docs/index.html")" "Four profiles" "website lists four profiles"
+assert_contains "$(cat "${REPO_ROOT}/docs/index.html")" 'id="customize"' "website has customize-later section"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-14"' "installer version 2026-07-19-14"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'balanced) install_balanced' "balanced install mode present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'custom) install_custom' "custom install mode present"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'Files installed (edit anytime)' "post-install edit guidance"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'MENU_DEFAULT_IDX=2' "menu defaults to Balanced"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'verify_installed_settings' "validates installed JSON"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'ensure_writable_dir' "checks writable install dirs"
 assert_file "${REPO_ROOT}/config/settings-balanced.json" "settings-balanced.json present"
 python3 -m json.tool "${REPO_ROOT}/config/settings-balanced.json" >/dev/null 2>&1 && pass "settings-balanced.json valid JSON" || fail "settings-balanced.json valid JSON"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'atomic_install_file' "atomic install helper present"
@@ -335,6 +340,32 @@ rm -f "$TMP_INSTALL"
 assert_file "${HOME}/.local/bin/claude-lean" "full download path installs both"
 teardown_test_home; trap - EXIT
 
+section "Download path: all preset modes"
+for mode in ultra regular balanced both; do
+  setup_test_home; trap teardown_test_home EXIT
+  TMP_INSTALL="$(mktemp)"
+  cp "${REPO_ROOT}/install.sh" "$TMP_INSTALL"
+  export CLAUDE_LEAN_RAW_BASE="file://${REPO_ROOT}"
+  OUT="$(CLAUDE_LEAN_MODE="$mode" bash "$TMP_INSTALL" 2>&1)"
+  rm -f "$TMP_INSTALL"
+  assert_file "${HOME}/.claude/settings.json" "download $mode: settings"
+  assert_contains "$OUT" "Files installed (edit anytime)" "download $mode: edit guidance"
+  if python3 -c "import json; json.load(open('${HOME}/.claude/settings.json'))" 2>/dev/null; then
+    pass "download $mode: valid JSON"
+  else
+    fail "download $mode: valid JSON"
+  fi
+  case "$mode" in
+    ultra|both)
+      assert_file "${HOME}/.local/bin/claude-lean" "download $mode: launcher"
+      ;;
+    regular|balanced)
+      assert_no_file "${HOME}/.local/bin/claude-lean" "download $mode: no launcher"
+      ;;
+  esac
+  teardown_test_home; trap - EXIT
+done
+
 section "claude-lean launcher"
 setup_test_home; trap teardown_test_home EXIT
 run_install_mode both
@@ -401,7 +432,9 @@ setup_test_home; trap teardown_test_home EXIT
 OUT="$(run_install_tty '4y')"
 assert_file "${HOME}/.local/bin/claude-lean" "TTY both installs"
 assert_contains "$OUT" "Confirm" "TTY both shows confirm"
-assert_contains "$OUT" "Installed to:" "TTY both shows install summary"
+assert_contains "$OUT" "Files installed (edit anytime)" "TTY both shows file paths"
+assert_contains "$OUT" "settings.json" "TTY both mentions settings path"
+assert_contains "$OUT" "Next steps" "TTY both shows next steps"
 teardown_test_home; trap - EXIT
 
 section "TTY: balanced (3 + y)"
@@ -416,7 +449,7 @@ section "TTY: reject then ultra (4n1y)"
 setup_test_home; trap teardown_test_home EXIT
 OUT="$(run_install_tty '4n1y')"
 assert_contains "$OUT" "Back to menu" "TTY reject returns to menu"
-assert_contains "$OUT" "Installed: Ultra Lean only" "TTY then installs ultra"
+assert_contains "$OUT" "Installed: Ultra Lean" "TTY then installs ultra"
 teardown_test_home; trap - EXIT
 
 section "TTY: quit (qy)"
@@ -427,7 +460,8 @@ teardown_test_home; trap - EXIT
 
 section "TTY: arrows + both"
 setup_test_home; trap teardown_test_home EXIT
-OUT="$(run_install_tty $'\e[B\e[B\e[B\ry')"
+# Menu defaults to Balanced (idx 2); one ↓ reaches Both (idx 3)
+OUT="$(run_install_tty $'\e[B\ry')"
 assert_file "${HOME}/.local/bin/claude-lean" "TTY arrows install both"
 teardown_test_home; trap - EXIT
 
@@ -495,7 +529,9 @@ teardown_test_home; trap - EXIT
 section "Non-interactive pipe"
 setup_test_home; trap teardown_test_home EXIT
 OUT="$(CLAUDE_LEAN_MODE=regular bash "${REPO_ROOT}/install.sh" 2>&1)"
-assert_contains "$OUT" "Installer version: 2026-07-19-13" "non-interactive version"
+assert_contains "$OUT" "Installer version: 2026-07-19-14" "non-interactive version"
+assert_contains "$OUT" "Files installed (edit anytime)" "non-interactive shows edit paths"
+assert_contains "$OUT" "${HOME}/.claude/settings.json" "non-interactive shows settings path"
 assert_file "${HOME}/.claude/settings.json" "non-interactive installs"
 teardown_test_home; trap - EXIT
 

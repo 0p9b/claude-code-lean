@@ -1,17 +1,17 @@
 :root {
-  --bg: #0c0c0e;
-  --bg-elevated: #141418;
-  --bg-card: #18181d;
-  --border: #2a2a32;
-  --text: #ececf1;
-  --text-muted: #9b9ba8;
-  --accent: #d97757;
-  --accent-soft: rgba(217, 119, 87, 0.14);
-  --accent-glow: rgba(217, 119, 87, 0.25);
-  --green: #6bcf7f;
+  --bg: #0b0f0e;
+  --bg-elevated: #121816;
+  --bg-card: #161c1a;
+  --border: #2a3330;
+  --text: #e8eeeb;
+  --text-muted: #8f9d97;
+  --accent: #3dba8a;
+  --accent-soft: rgba(61, 186, 138, 0.14);
+  --accent-glow: rgba(61, 186, 138, 0.22);
+  --green: #3dba8a;
   --radius: 14px;
-  --font: "Inter", system-ui, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --font: "DM Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * {
@@ -125,19 +125,61 @@ nav a:hover {
   margin-bottom: 1.25rem;
 }
 
-.hero h1 {
-  font-size: clamp(2.2rem, 5vw, 3.6rem);
-  line-height: 1.1;
+.hero h1,
+.brand-hero {
+  font-size: clamp(2.4rem, 5.5vw, 3.8rem);
+  line-height: 1.08;
   font-weight: 700;
-  letter-spacing: -0.03em;
-  margin-bottom: 1.25rem;
+  letter-spacing: -0.035em;
+  margin-bottom: 0.65rem;
+}
+
+.hero-tagline {
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 0.85rem;
 }
 
 .hero-lead {
-  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  font-size: clamp(1rem, 2vw, 1.15rem);
   color: var(--text-muted);
-  max-width: 640px;
-  margin: 0 auto 2.5rem;
+  max-width: 560px;
+  margin: 0 auto 2.25rem;
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.file-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.1fr) 1.4fr;
+  gap: 0.75rem 1.25rem;
+  align-items: baseline;
+  padding: 0.9rem 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.file-row code {
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.file-row span {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+@media (max-width: 640px) {
+  .file-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .install-box {

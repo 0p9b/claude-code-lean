@@ -12,7 +12,7 @@ BIN_DIR="${CLAUDE_LEAN_BIN_DIR:-${HOME}/.local/bin}"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-13"
+INSTALLER_VERSION="2026-07-19-14"
 VALID_MODES=(ultra regular balanced both custom)
 
 TUI_IN="/dev/tty"
@@ -196,16 +196,21 @@ ask_to_confirm() {
   fi
 }
 
-# Interactive menu: ↑↓ to move, 1-3/q to pick, Enter to open confirm menu.
+# Interactive menu: ↑↓ to move, number/q to pick, Enter to open confirm menu.
+# Optional MENU_DEFAULT_IDX sets the initial highlight (default 0).
 # Sets MENU_SELECTED_IDX and returns 0 on success.
 menu_select() {
   local -a options=("$@")
   local count=${#options[@]}
-  local selected=0
+  local selected="${MENU_DEFAULT_IDX:-0}"
   local key seq
 
   if ! tui_available; then
     return 1
+  fi
+
+  if ((selected < 0 || selected >= count)); then
+    selected=0
   fi
 
   while true; do
@@ -325,7 +330,7 @@ resolve_sources() {
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || true)"
 
-  if [[ -n "$script_dir" && -f "$script_dir/config/settings.json" ]]; then
+  if [[ -n "$script_dir" && -f "$script_dir/config/settings.json" && -f "$script_dir/config/settings-balanced.json" ]]; then
     WORKDIR="$script_dir"
     CLEANUP_WORKDIR=0
     say "Using local repo files from: $WORKDIR"
@@ -371,21 +376,59 @@ backup_if_exists() {
   fi
 }
 
+ensure_writable_dir() {
+  local dir="$1" label="$2"
+  if ! mkdir -p "$dir" 2>/dev/null; then
+    err "Cannot create ${label}: ${dir}"
+  fi
+  if [[ ! -w "$dir" ]]; then
+    err "Cannot write to ${label}: ${dir}"
+  fi
+}
+
 ensure_path_note() {
   if ! echo ":$PATH:" | grep -q ":${BIN_DIR}:"; then
     say
-    say "Note: ${BIN_DIR} is not on your PATH. Add this to your shell config:"
-    say "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+    say "PATH tip: ${BIN_DIR} is not on your PATH yet."
+    say "  Add this line to ~/.bashrc or ~/.zshrc, then open a new terminal:"
+    say "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+    say "  Or run once now:"
+    say "    export PATH=\"${BIN_DIR}:\$PATH\""
+  fi
+}
+
+verify_installed_settings() {
+  local path="${CLAUDE_DIR}/settings.json"
+  if [[ ! -s "$path" ]]; then
+    err "Installed settings.json is missing or empty. Re-run the installer."
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$path" >/dev/null 2>&1; then
+      err "Installed settings.json is not valid JSON. Re-run the installer."
+    fi
+  elif command -v jq >/dev/null 2>&1; then
+    if ! jq empty "$path" >/dev/null 2>&1; then
+      err "Installed settings.json is not valid JSON. Re-run the installer."
+    fi
+  else
+    local first
+    first="$(head -c 1 "$path" 2>/dev/null || true)"
+    if [[ "$first" != "{" ]]; then
+      err "Installed settings.json looks corrupt. Re-run the installer."
+    fi
   fi
 }
 
 install_shared() {
   local settings_src="${1:-$WORKDIR/config/settings.json}"
-  mkdir -p "$CLAUDE_DIR/output-styles" "$BIN_DIR"
+  ensure_writable_dir "$CLAUDE_DIR" "Claude config dir"
+  ensure_writable_dir "$CLAUDE_DIR/output-styles" "output-styles dir"
+  ensure_writable_dir "$BIN_DIR" "bin dir"
 
-  say "Installing shared lean settings…"
+  say "Installing settings…"
   backup_if_exists "${CLAUDE_DIR}/settings.json"
   atomic_install_file "$settings_src" "${CLAUDE_DIR}/settings.json"
+  verify_installed_settings
 
   backup_if_exists "${CLAUDE_DIR}/output-styles/lean.md"
   atomic_install_file "$WORKDIR/templates/output-styles/lean.md" "${CLAUDE_DIR}/output-styles/lean.md"
@@ -410,17 +453,51 @@ install_launcher() {
 }
 
 print_install_summary() {
+  local mode="${1:-$SELECTED_MODE}"
+  local start_cmd="claude"
+
+  case "$mode" in
+    ultra) start_cmd="claude-lean" ;;
+    both) start_cmd="claude-lean  or  claude" ;;
+    custom)
+      case "${CUSTOM_LAUNCHER:-regular}" in
+        ultra) start_cmd="claude-lean" ;;
+        both) start_cmd="claude-lean  or  claude" ;;
+        *) start_cmd="claude" ;;
+      esac
+      ;;
+  esac
+
   say
-  say "Installed to:"
-  say "  settings:      ${CLAUDE_DIR}/settings.json"
-  say "  output style:  ${CLAUDE_DIR}/output-styles/lean.md"
+  say "────────────────────────────────────────"
+  say "  Files installed (edit anytime)"
+  say "────────────────────────────────────────"
+  say "  ${CLAUDE_DIR}/settings.json"
+  say "      → tools deny list, effort, thinking, memory, disables"
+  say "  ${CLAUDE_DIR}/output-styles/lean.md"
+  say "      → short “Be brief.” style injected into sessions"
   if [[ -f "${BIN_DIR}/claude-lean" ]]; then
-    say "  launcher:      ${BIN_DIR}/claude-lean"
-    say "  system prompt: ${CLAUDE_DIR}/system-prompt-lean.txt"
-    if [[ -f "${CLAUDE_DIR}/claude-lean.conf" ]]; then
-      say "  launcher conf: ${CLAUDE_DIR}/claude-lean.conf"
-    fi
+    say "  ${BIN_DIR}/claude-lean"
+    say "      → Ultra launcher (replaces product system prompt)"
+    say "  ${CLAUDE_DIR}/system-prompt-lean.txt"
+    say "      → Ultra system prompt text (currently a single “.”)"
   fi
+  if [[ -f "${CLAUDE_DIR}/claude-lean.conf" ]]; then
+    say "  ${CLAUDE_DIR}/claude-lean.conf"
+    say "      → custom tool list / effort for claude-lean"
+  fi
+  say
+  say "────────────────────────────────────────"
+  say "  Next steps"
+  say "────────────────────────────────────────"
+  say "  1. Restart any open Claude Code sessions"
+  say "  2. Start with:  ${start_cmd}"
+  say "  3. Run /context to verify token usage"
+  say
+  say "Want different tools later?"
+  say "  • Edit deny list in:  ${CLAUDE_DIR}/settings.json"
+  say "  • Or re-run installer:  curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash"
+  say "  • Full reference:      https://0p9b.github.io/claude-code-lean/config.html"
 }
 
 install_custom() {
@@ -454,40 +531,26 @@ install_custom() {
   else
     say "  • Packs:  lean only (6 core tools)"
   fi
-  say
-  case "$CUSTOM_LAUNCHER" in
-    ultra) say "Start with:  claude-lean" ;;
-    regular) say "Start with:  claude" ;;
-    both) say "Start with:  claude-lean (ultra) or claude (regular)" ;;
-  esac
-  say "  Full breakdown: https://0p9b.github.io/claude-code-lean/config.html"
-  print_install_summary
+  print_install_summary custom
   cleanup_custom_gen
 }
 
 install_regular() {
   install_shared
   say
-  say "Installed: Regular Lean only"
+  say "Installed: Regular Lean"
   say "  • Six tools (Bash, Read, Write, Edit, WebSearch, WebFetch)"
-  say "  • Claude Code default lean system prompt"
-  say "  • Effort: medium"
-  say
-  say "Start with:  claude"
-  print_install_summary
+  say "  • Claude Code default system prompt · effort medium"
+  print_install_summary regular
 }
 
 install_balanced() {
   install_shared "$WORKDIR/config/settings-balanced.json"
   say
   say "Installed: Balanced"
-  say "  • Core 6 + Glob, Grep, TodoWrite"
-  say "  • Thinking enabled"
-  say "  • Claude Code default system prompt"
-  say "  • Effort: medium"
-  say
-  say "Start with:  claude"
-  print_install_summary
+  say "  • Core 6 + Glob, Grep, TodoWrite · thinking on"
+  say "  • Claude Code default system prompt · effort medium"
+  print_install_summary balanced
 }
 
 install_ultra() {
@@ -495,13 +558,10 @@ install_ultra() {
   install_launcher
 
   say
-  say "Installed: Ultra Lean only"
+  say "Installed: Ultra Lean"
   say "  • Six tools (Bash, Read, Write, Edit, WebSearch, WebFetch)"
-  say "  • Minimal custom system prompt (overrides product prompt)"
-  say "  • Effort: medium"
-  say
-  say "Start with:  claude-lean"
-  print_install_summary
+  say "  • Minimal custom system prompt · effort medium"
+  print_install_summary ultra
 }
 
 install_both() {
@@ -509,14 +569,10 @@ install_both() {
   install_launcher
 
   say
-  say "Installed: Both Ultra + Regular"
-  say "  • Same lean settings + six tools for either command"
-  say "  • Effort: medium"
-  say
-  say "Use either launcher anytime:"
-  say "  claude-lean  → Ultra Lean (custom minimal system prompt, ~4.5–5k)"
-  say "  claude       → Regular Lean (default Claude Code system prompt, ~6.5k)"
-  print_install_summary
+  say "Installed: Both (Ultra + Regular launchers)"
+  say "  • Same lean 6-tool settings for either command · effort medium"
+  say "  • claude-lean → Ultra · claude → Regular"
+  print_install_summary both
 }
 
 choose_mode() {
@@ -524,8 +580,8 @@ choose_mode() {
   local -a menu_labels=(
     "1) Ultra Lean — most stripped (~4.5–5k, claude-lean)"
     "2) Regular Lean — 6 tools + default prompt (~6.5k, claude)"
-    "3) Balanced — +Glob/Grep/TodoWrite + thinking (~7–9k, claude)"
-    "4) Both — Ultra + Regular launchers (lean 6 tools)"
+    "3) Balanced — +Glob/Grep/TodoWrite + thinking (~7–9k, claude)  ★ recommended"
+    "4) Both — install Ultra + Regular launchers together"
     "5) Custom — wizard: pick tools, effort, launcher"
     "q) Quit without installing"
   )
@@ -545,13 +601,16 @@ choose_mode() {
   ui "  Claude Code Lean installer"
   ui "========================================"
   ui ""
-  ui "Profiles: Ultra → Regular → Balanced → Custom"
-  ui "Ultra/Regular: 6 tools. Balanced: +search + todos + thinking."
-  ui "Details: https://0p9b.github.io/claude-code-lean/config.html"
+  ui "Four profiles (pick one):"
+  ui "  Ultra → Regular → Balanced → Custom"
+  ui "Option 4 installs Ultra + Regular launchers together."
+  ui "Docs: https://0p9b.github.io/claude-code-lean/config.html"
   ui ""
   ui "Choose what to install:"
   ui ""
 
+  # Default highlight: Balanced (recommended)
+  MENU_DEFAULT_IDX=2
   if tui_available && menu_select "${menu_labels[@]}"; then
     idx="$MENU_SELECTED_IDX"
   else
@@ -656,8 +715,6 @@ main() {
     *) err "Internal error: unhandled mode '$SELECTED_MODE'" ;;
   esac
 
-  say
-  say "Restart any open Claude Code sessions, then run /context to verify."
 }
 
 main "$@"

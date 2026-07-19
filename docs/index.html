@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Cut Claude Code CLI startup context. Six tools. Pick your system prompt. One-command install.">
+  <meta name="description" content="Cut Claude Code CLI startup context. Four profiles from Ultra to Custom. One-command install.">
   <title>Claude Code Lean</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
   <header class="site-header">
@@ -16,9 +16,9 @@
       <a class="logo" href="index.html">Claude Code Lean</a>
       <nav>
         <a href="#install">Install</a>
-        <a href="#options">Options</a>
-        <a href="config.html">Config breakdown</a>
-        <a href="#features">Features</a>
+        <a href="#options">Profiles</a>
+        <a href="#customize">Customize</a>
+        <a href="config.html">Config</a>
         <a href="https://github.com/0p9b/claude-code-lean" target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
     </div>
@@ -28,10 +28,11 @@
     <section class="hero">
       <div class="container hero-inner">
         <p class="eyebrow">Open source · MIT · Claude Code CLI</p>
-        <h1>Lean Claude Code.<br>Less context. Same power.</h1>
+        <h1 class="brand-hero">Claude Code Lean</h1>
+        <p class="hero-tagline">Less context. Same coding power.</p>
         <p class="hero-lead">
-          Cut startup tokens to ~4.5–6.5k. Keep six essential tools.
-          Pick Ultra, Regular, Both, or <strong>Custom</strong> — wizard-driven config.
+          One command. Four profiles from most stripped to fully custom.
+          Keep OAuth — no API key required.
         </p>
 
         <div class="install-box" id="install">
@@ -50,27 +51,29 @@
         </div>
 
         <p class="hero-note">
-          Interactive menu with confirm step · OAuth still works · No API key required
+          Menu → confirm → install · Backs up your existing settings · Recommend: <strong>Balanced</strong>
         </p>
 
         <div class="hero-actions">
-          <a class="btn btn-primary" href="#options">See install options</a>
-          <a class="btn btn-ghost" href="https://github.com/0p9b/claude-code-lean" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+          <a class="btn btn-primary" href="#options">See profiles</a>
+          <a class="btn btn-ghost" href="config.html">Config breakdown</a>
         </div>
       </div>
     </section>
 
     <section class="section" id="options">
       <div class="container">
-        <h2>Five ways to install</h2>
-        <p class="section-lead">Ultra is the most stripped down. Regular keeps the default prompt. Balanced adds search + todos + thinking. Custom lets you pick packs.</p>
+        <h2>Four profiles (+ Both)</h2>
+        <p class="section-lead">
+          Ultra → Regular → Balanced → Custom. Option 4 installs Ultra + Regular launchers together.
+        </p>
 
         <div class="cards">
           <article class="card">
             <span class="card-num">1</span>
             <h3>Ultra Lean</h3>
             <p class="card-stat">~4.5–5k · most stripped</p>
-            <p>Minimal custom system prompt via <code>claude-lean</code>. Lowest startup context.</p>
+            <p>Minimal custom system prompt. Six core tools only.</p>
             <p class="card-run">Run: <code>claude-lean</code></p>
           </article>
 
@@ -78,24 +81,24 @@
             <span class="card-num">2</span>
             <h3>Regular Lean</h3>
             <p class="card-stat">~6.5k tokens</p>
-            <p>Six tools + Claude Code’s default lean system prompt. No extra launcher.</p>
+            <p>Same six tools + Claude Code’s default lean system prompt.</p>
             <p class="card-run">Run: <code>claude</code></p>
           </article>
 
           <article class="card card-featured">
-            <span class="badge">Practical</span>
+            <span class="badge">Recommended</span>
             <span class="card-num">3</span>
             <h3>Balanced</h3>
-            <p class="card-stat">~7–9k · +search + thinking</p>
-            <p>Default prompt + Glob/Grep/TodoWrite + thinking. Still blocks MCP, Agent, skills, etc.</p>
+            <p class="card-stat">~7–9k · practical</p>
+            <p>Default prompt + Glob/Grep/TodoWrite + thinking. Still blocks MCP, Agent, skills.</p>
             <p class="card-run">Run: <code>claude</code></p>
           </article>
 
           <article class="card">
             <span class="card-num">4</span>
             <h3>Both</h3>
-            <p class="card-stat">Pick per session</p>
-            <p>Install Ultra + Regular launchers. Same lean 6-tool settings either way.</p>
+            <p class="card-stat">Ultra + Regular</p>
+            <p>Convenience: install both launchers with lean 6-tool settings.</p>
             <p class="card-run">Run either command</p>
           </article>
 
@@ -103,8 +106,8 @@
             <span class="card-num">5</span>
             <h3>Custom</h3>
             <p class="card-stat">Wizard-driven</p>
-            <p>Interactive TUI: choose launcher, effort, and optional tool packs (Glob, Agent, MCP, …).</p>
-            <p class="card-run"><a href="config.html">See full breakdown →</a></p>
+            <p>Pick launcher, effort, and tool packs interactively.</p>
+            <p class="card-run"><a href="config.html">See packs →</a></p>
           </article>
         </div>
 
@@ -115,7 +118,39 @@
       </div>
     </section>
 
-    <section class="section section-alt" id="features">
+    <section class="section section-alt" id="customize">
+      <div class="container narrow">
+        <h2>Customize later</h2>
+        <p class="section-lead">The installer prints exact paths. Edit these anytime — or re-run the installer (it backs up first).</p>
+        <div class="file-list">
+          <div class="file-row">
+            <code>~/.claude/settings.json</code>
+            <span>Tools deny list, effort, thinking, memory, disables</span>
+          </div>
+          <div class="file-row">
+            <code>~/.claude/output-styles/lean.md</code>
+            <span>Short output style (“Be brief.”)</span>
+          </div>
+          <div class="file-row">
+            <code>~/.local/bin/claude-lean</code>
+            <span>Ultra launcher (replaces product system prompt)</span>
+          </div>
+          <div class="file-row">
+            <code>~/.claude/system-prompt-lean.txt</code>
+            <span>Ultra system prompt text</span>
+          </div>
+          <div class="file-row">
+            <code>~/.claude/claude-lean.conf</code>
+            <span>Custom tool list for <code>claude-lean</code> (Custom mode)</span>
+          </div>
+        </div>
+        <p class="fine-print" style="margin-top:1.25rem">
+          Full reference: <a href="config.html">config breakdown</a>
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="features">
       <div class="container">
         <div class="split">
           <div>
@@ -124,27 +159,27 @@
           </div>
           <div class="feature-grid">
             <div class="feature">
-              <h4>Enabled</h4>
+              <h4>Lean base (6 tools)</h4>
               <p>Bash · Read · Write · Edit · WebSearch · WebFetch</p>
             </div>
             <div class="feature">
-              <h4>Disabled</h4>
-              <p>MCP, skills, workflows, agents, plan mode, cron, tasks, LSP, auto memory, and more</p>
+              <h4>Balanced adds</h4>
+              <p>Glob · Grep · TodoWrite · thinking on</p>
             </div>
             <div class="feature">
-              <h4>Defaults</h4>
-              <p>Effort <code>medium</code> · OAuth login · No <code>--bare</code></p>
+              <h4>Still off</h4>
+              <p>MCP, Agent, skills, Task*, LSP, memory, hooks, CLAUDE.md</p>
             </div>
             <div class="feature">
               <h4>Safe install</h4>
-              <p>Backs up existing <code>settings.json</code> before overwriting</p>
+              <p>Atomic writes · backs up <code>settings.json</code> · validates JSON</p>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="section">
+    <section class="section section-alt">
       <div class="container narrow">
         <h2>After install</h2>
         <div class="steps">
@@ -154,7 +189,7 @@
           </div>
           <div class="step">
             <span class="step-n">2</span>
-            <p>Run <code>claude-lean</code> or <code>claude</code></p>
+            <p>Run <code>claude</code> or <code>claude-lean</code></p>
           </div>
           <div class="step">
             <span class="step-n">3</span>

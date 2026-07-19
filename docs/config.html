@@ -38,18 +38,30 @@
       <h1>Configuration breakdown</h1>
       <p class="lead">What lean disables by default, how profiles compare, and what Custom mode can re-enable.</p>
 
-      <h2>Profile comparison</h2>
+      <h2>Four profiles (+ Both)</h2>
       <table>
-        <thead><tr><th>Profile</th><th>Tools</th><th>System prompt</th><th>Thinking</th><th>Command</th></tr></thead>
+        <thead><tr><th>#</th><th>Profile</th><th>Tools</th><th>System prompt</th><th>Thinking</th><th>Command</th></tr></thead>
         <tbody>
-          <tr><td><strong>Ultra</strong></td><td>6 core</td><td>Custom minimal (<code>.</code>)</td><td>Off</td><td><code>claude-lean</code></td></tr>
-          <tr><td><strong>Regular</strong></td><td>6 core</td><td>Claude Code default lean</td><td>Off</td><td><code>claude</code></td></tr>
-          <tr><td><strong>Balanced</strong></td><td>6 + Glob/Grep/TodoWrite</td><td>Claude Code default lean</td><td><strong>On</strong></td><td><code>claude</code></td></tr>
-          <tr><td><strong>Both</strong></td><td>6 core</td><td>Pick Ultra or Regular</td><td>Off</td><td>Both</td></tr>
-          <tr><td><strong>Custom</strong></td><td>You choose</td><td>Wizard</td><td>Optional</td><td>Wizard</td></tr>
+          <tr><td>1</td><td><strong>Ultra</strong></td><td>6 core</td><td>Custom minimal (<code>.</code>)</td><td>Off</td><td><code>claude-lean</code></td></tr>
+          <tr><td>2</td><td><strong>Regular</strong></td><td>6 core</td><td>Claude Code default lean</td><td>Off</td><td><code>claude</code></td></tr>
+          <tr><td>3</td><td><strong>Balanced</strong> ★</td><td>6 + Glob/Grep/TodoWrite</td><td>Claude Code default lean</td><td><strong>On</strong></td><td><code>claude</code></td></tr>
+          <tr><td>4</td><td><strong>Both</strong></td><td>6 core</td><td>Ultra or Regular</td><td>Off</td><td>either</td></tr>
+          <tr><td>5</td><td><strong>Custom</strong></td><td>You choose</td><td>Wizard</td><td>Optional</td><td>Wizard</td></tr>
         </tbody>
       </table>
-      <p><strong>Ultra is the most stripped-down.</strong> <strong>Balanced</strong> sits between Regular and Custom — still major savings, plus code search, todos, and thinking.</p>
+      <p><strong>Ultra → Regular → Balanced → Custom</strong> are the four profiles. Option 4 installs Ultra + Regular launchers together. <strong>Balanced</strong> is the recommended everyday default.</p>
+
+      <h2>Files to edit later</h2>
+      <table>
+        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>~/.claude/settings.json</code></td><td>Deny list, effort, thinking, memory, disables</td></tr>
+          <tr><td><code>~/.claude/output-styles/lean.md</code></td><td>Short output style</td></tr>
+          <tr><td><code>~/.local/bin/claude-lean</code></td><td>Ultra launcher</td></tr>
+          <tr><td><code>~/.claude/system-prompt-lean.txt</code></td><td>Ultra system prompt text</td></tr>
+          <tr><td><code>~/.claude/claude-lean.conf</code></td><td>Custom tool list for <code>claude-lean</code></td></tr>
+        </tbody>
+      </table>
 
       <h2>Always enabled (lean base)</h2>
       <p>Six tools: <code>Bash</code> · <code>Read</code> · <code>Write</code> · <code>Edit</code> · <code>WebSearch</code> · <code>WebFetch</code></p>
