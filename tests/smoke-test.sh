@@ -77,9 +77,55 @@ bash -n "${REPO_ROOT}/install.sh" && pass "install.sh syntax (bash -n)" || fail 
 bash -n "${REPO_ROOT}/bin/claude-lean" && pass "claude-lean syntax (bash -n)" || fail "claude-lean syntax (bash -n)"
 python3 -m json.tool "${REPO_ROOT}/config/settings.json" >/dev/null 2>&1 && pass "settings.json valid JSON" || fail "settings.json valid JSON"
 assert_executable "${REPO_ROOT}/bin/claude-lean" "bin/claude-lean executable"
-assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-10"' "installer version 2026-07-19-10"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-11"' "installer version 2026-07-19-11"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'custom) install_custom' "custom install mode present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'atomic_install_file' "atomic install helper present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'validate_mode_or_exit' "mode validation present"
+
+section "Custom settings generator"
+GEN_DIR="$(mktemp -d)"
+python3 "${REPO_ROOT}/config/generate-settings.py" \
+  --base "${REPO_ROOT}/config/settings.json" \
+  --out-settings "${GEN_DIR}/settings.json" \
+  --packs "search,agents" \
+  --effort high \
+  --launcher \
+  --out-launcher "${GEN_DIR}/claude-lean.conf" >/dev/null
+if python3 -c "import json; s=json.load(open('${GEN_DIR}/settings.json')); assert 'Glob' not in s['permissions']['deny']; assert 'Agent' not in s['permissions']['deny']; assert s['effortLevel']=='high'"; then
+  pass "generator enables packs and sets effort"
+else
+  fail "generator enables packs and sets effort"
+fi
+assert_contains "$(cat "${GEN_DIR}/claude-lean.conf")" 'Glob,Grep' "launcher conf includes search tools"
+assert_contains "$(cat "${GEN_DIR}/claude-lean.conf")" 'EFFORT="high"' "launcher conf includes effort"
+rm -rf "$GEN_DIR"
+
+section "Custom install (programmatic)"
+setup_test_home; trap teardown_test_home EXIT
+GEN="${TEST_HOME}/generated"
+mkdir -p "$GEN"
+python3 "${REPO_ROOT}/config/generate-settings.py" \
+  --base "${REPO_ROOT}/config/settings.json" \
+  --out-settings "${GEN}/settings.json" \
+  --packs search \
+  --launcher \
+  --out-launcher "${GEN}/claude-lean.conf" >/dev/null
+# Simulate custom install path
+mkdir -p "${HOME}/.claude/output-styles" "${HOME}/.local/bin"
+cp "${GEN}/settings.json" "${HOME}/.claude/settings.json"
+cp "${REPO_ROOT}/templates/output-styles/lean.md" "${HOME}/.claude/output-styles/lean.md"
+cp "${REPO_ROOT}/templates/system-prompt-lean.txt" "${HOME}/.claude/system-prompt-lean.txt"
+cp "${REPO_ROOT}/bin/claude-lean" "${HOME}/.local/bin/claude-lean"
+cp "${GEN}/claude-lean.conf" "${HOME}/.claude/claude-lean.conf"
+chmod +x "${HOME}/.local/bin/claude-lean"
+if python3 -c "import json; assert 'Glob' not in json.load(open('${HOME}/.claude/settings.json'))['permissions']['deny']"; then
+  pass "custom install settings enable Glob"
+else
+  fail "custom install settings enable Glob"
+fi
+PATH="${TEST_BIN}:${HOME}/.local/bin:${PATH}" claude-lean >/dev/null 2>&1 || true
+assert_contains "$(cat "$MOCK_LOG")" "Glob,Grep" "custom claude-lean uses generated tools"
+teardown_test_home; trap - EXIT
 
 section "Install mode: ultra"
 setup_test_home; trap teardown_test_home EXIT
@@ -286,7 +332,7 @@ teardown_test_home; trap - EXIT
 section "Non-interactive pipe"
 setup_test_home; trap teardown_test_home EXIT
 OUT="$(CLAUDE_LEAN_MODE=regular bash "${REPO_ROOT}/install.sh" 2>&1)"
-assert_contains "$OUT" "Installer version: 2026-07-19-10" "non-interactive version"
+assert_contains "$OUT" "Installer version: 2026-07-19-11" "non-interactive version"
 assert_file "${HOME}/.claude/settings.json" "non-interactive installs"
 teardown_test_home; trap - EXIT
 

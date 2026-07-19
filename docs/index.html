@@ -17,6 +17,7 @@
       <nav>
         <a href="#install">Install</a>
         <a href="#options">Options</a>
+        <a href="config.html">Config breakdown</a>
         <a href="#features">Features</a>
         <a href="https://github.com/0p9b/claude-code-lean" target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
@@ -30,7 +31,7 @@
         <h1>Lean Claude Code.<br>Less context. Same power.</h1>
         <p class="hero-lead">
           Cut startup tokens to ~4.5–6.5k. Keep six essential tools.
-          Pick Ultra or Regular lean — or install both and choose per session.
+          Pick Ultra, Regular, Both, or <strong>Custom</strong> — wizard-driven config.
         </p>
 
         <div class="install-box" id="install">
@@ -61,15 +62,15 @@
 
     <section class="section" id="options">
       <div class="container">
-        <h2>Three ways to install</h2>
-        <p class="section-lead">Same lean settings and six tools every time. Only the system prompt differs.</p>
+        <h2>Four ways to install</h2>
+        <p class="section-lead">Ultra is the most stripped down. Regular keeps the default prompt. Custom lets you add tool packs via a wizard.</p>
 
         <div class="cards">
           <article class="card">
             <span class="card-num">1</span>
             <h3>Ultra Lean</h3>
-            <p class="card-stat">~4.5–5k tokens</p>
-            <p>Settings + <code>claude-lean</code> launcher with a minimal custom system prompt.</p>
+            <p class="card-stat">~4.5–5k · most stripped</p>
+            <p>Minimal custom system prompt via <code>claude-lean</code>. Lowest startup context.</p>
             <p class="card-run">Run: <code>claude-lean</code></p>
           </article>
 
@@ -77,7 +78,7 @@
             <span class="card-num">2</span>
             <h3>Regular Lean</h3>
             <p class="card-stat">~6.5k tokens</p>
-            <p>Settings only. Uses Claude Code’s default lean system prompt.</p>
+            <p>Six tools + Claude Code’s default lean system prompt. No extra launcher.</p>
             <p class="card-run">Run: <code>claude</code></p>
           </article>
 
@@ -85,9 +86,17 @@
             <span class="badge">Recommended</span>
             <span class="card-num">3</span>
             <h3>Both</h3>
-            <p class="card-stat">Best of both</p>
-            <p>Install everything. Pick <code>claude-lean</code> or <code>claude</code> when you launch.</p>
+            <p class="card-stat">Pick per session</p>
+            <p>Install both launchers. Same lean settings either way.</p>
             <p class="card-run">Run either command</p>
+          </article>
+
+          <article class="card">
+            <span class="card-num">4</span>
+            <h3>Custom</h3>
+            <p class="card-stat">Wizard-driven</p>
+            <p>Interactive TUI: choose launcher, effort, and optional tool packs (Glob, Agent, MCP, …).</p>
+            <p class="card-run"><a href="config.html">See full breakdown →</a></p>
           </article>
         </div>
 

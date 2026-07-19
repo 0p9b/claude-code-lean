@@ -12,8 +12,8 @@ BIN_DIR="${CLAUDE_LEAN_BIN_DIR:-${HOME}/.local/bin}"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-10"
-VALID_MODES=(ultra regular both)
+INSTALLER_VERSION="2026-07-19-11"
+VALID_MODES=(ultra regular both custom)
 
 TUI_IN="/dev/tty"
 TUI_OUT="/dev/tty"
@@ -210,7 +210,7 @@ menu_select() {
 
   while true; do
     menu_draw_options "$selected" "${options[@]}"
-    printf '  \033[2m↑↓ move · 1-3/q pick · Enter to confirm\033[0m\033[K\n' >"$TUI_OUT"
+    printf '  \033[2m↑↓ move · number pick · Enter to confirm\033[0m\033[K\n' >"$TUI_OUT"
     tui_hide_cursor
 
     while true; do
@@ -227,16 +227,19 @@ menu_select() {
                 ((selected < count - 1)) && ((selected++))
               fi
               menu_redraw_options "$selected" "${options[@]}"
-              printf '  \033[2m↑↓ move · 1-3/q pick · Enter to confirm\033[0m\033[K\n' >"$TUI_OUT"
+              printf '  \033[2m↑↓ move · number pick · Enter to confirm\033[0m\033[K\n' >"$TUI_OUT"
               ;;
           esac
           ;;
         '' | $'\n' | $'\r')
           break
           ;;
-        [1-3])
-          selected=$((key - 1))
-          break
+        [1-9])
+          local pick=$((key - 1))
+          if ((pick >= 0 && pick < count)); then
+            selected=$pick
+            break
+          fi
           ;;
         q | Q)
           selected=$((count - 1))
@@ -297,7 +300,7 @@ validate_mode_or_exit() {
     printf '%s' "$mode"
     return 0
   fi
-  err "Unknown install mode: '$1' (expected: ultra, regular, or both)"
+  err "Unknown install mode: '$1' (expected: ultra, regular, both, or custom)"
 }
 
 atomic_install_file() {
@@ -323,6 +326,8 @@ resolve_sources() {
     WORKDIR="$script_dir"
     CLEANUP_WORKDIR=0
     say "Using local repo files from: $WORKDIR"
+    # shellcheck disable=SC1091
+    source "${WORKDIR}/lib/custom-wizard.sh"
     return
   fi
 
@@ -330,16 +335,22 @@ resolve_sources() {
   CLEANUP_WORKDIR=1
   say "Downloading install files…"
 
-  mkdir -p "$WORKDIR/config" "$WORKDIR/bin" "$WORKDIR/templates/output-styles"
+  mkdir -p "$WORKDIR/config" "$WORKDIR/bin" "$WORKDIR/lib" "$WORKDIR/templates/output-styles"
 
   curl -fsSL "$REPO_RAW/config/settings.json" -o "$WORKDIR/config/settings.json"
+  curl -fsSL "$REPO_RAW/config/generate-settings.py" -o "$WORKDIR/config/generate-settings.py"
+  curl -fsSL "$REPO_RAW/lib/custom-wizard.sh" -o "$WORKDIR/lib/custom-wizard.sh"
   curl -fsSL "$REPO_RAW/bin/claude-lean" -o "$WORKDIR/bin/claude-lean"
   curl -fsSL "$REPO_RAW/templates/system-prompt-lean.txt" -o "$WORKDIR/templates/system-prompt-lean.txt"
   curl -fsSL "$REPO_RAW/templates/output-styles/lean.md" -o "$WORKDIR/templates/output-styles/lean.md"
 
-  chmod +x "$WORKDIR/bin/claude-lean"
+  chmod +x "$WORKDIR/bin/claude-lean" "$WORKDIR/config/generate-settings.py"
+  # shellcheck disable=SC1091
+  source "${WORKDIR}/lib/custom-wizard.sh"
 
   verify_nonempty_file "$WORKDIR/config/settings.json" "config/settings.json"
+  verify_nonempty_file "$WORKDIR/config/generate-settings.py" "config/generate-settings.py"
+  verify_nonempty_file "$WORKDIR/lib/custom-wizard.sh" "lib/custom-wizard.sh"
   verify_nonempty_file "$WORKDIR/bin/claude-lean" "bin/claude-lean"
   verify_nonempty_file "$WORKDIR/templates/system-prompt-lean.txt" "templates/system-prompt-lean.txt"
   verify_nonempty_file "$WORKDIR/templates/output-styles/lean.md" "templates/output-styles/lean.md"
@@ -364,23 +375,32 @@ ensure_path_note() {
 }
 
 install_shared() {
+  local settings_src="${1:-$WORKDIR/config/settings.json}"
   mkdir -p "$CLAUDE_DIR/output-styles" "$BIN_DIR"
 
   say "Installing shared lean settings…"
   backup_if_exists "${CLAUDE_DIR}/settings.json"
-  atomic_install_file "$WORKDIR/config/settings.json" "${CLAUDE_DIR}/settings.json"
+  atomic_install_file "$settings_src" "${CLAUDE_DIR}/settings.json"
 
   backup_if_exists "${CLAUDE_DIR}/output-styles/lean.md"
   atomic_install_file "$WORKDIR/templates/output-styles/lean.md" "${CLAUDE_DIR}/output-styles/lean.md"
 }
 
 install_launcher() {
+  local conf_src="${1:-}"
+
   say "Installing claude-lean launcher…"
   backup_if_exists "${CLAUDE_DIR}/system-prompt-lean.txt"
   atomic_install_file "$WORKDIR/templates/system-prompt-lean.txt" "${CLAUDE_DIR}/system-prompt-lean.txt"
 
   atomic_install_file "$WORKDIR/bin/claude-lean" "${BIN_DIR}/claude-lean"
   chmod +x "${BIN_DIR}/claude-lean"
+
+  if [[ -n "$conf_src" && -f "$conf_src" ]]; then
+    backup_if_exists "${CLAUDE_DIR}/claude-lean.conf"
+    atomic_install_file "$conf_src" "${CLAUDE_DIR}/claude-lean.conf"
+  fi
+
   ensure_path_note
 }
 
@@ -392,7 +412,50 @@ print_install_summary() {
   if [[ -f "${BIN_DIR}/claude-lean" ]]; then
     say "  launcher:      ${BIN_DIR}/claude-lean"
     say "  system prompt: ${CLAUDE_DIR}/system-prompt-lean.txt"
+    if [[ -f "${CLAUDE_DIR}/claude-lean.conf" ]]; then
+      say "  launcher conf: ${CLAUDE_DIR}/claude-lean.conf"
+    fi
   fi
+}
+
+install_custom() {
+  if [[ -z "$CUSTOM_GENERATED_SETTINGS" ]]; then
+    run_custom_wizard || exit 0
+  fi
+
+  install_shared "$CUSTOM_GENERATED_SETTINGS"
+
+  case "$CUSTOM_LAUNCHER" in
+    ultra)
+      install_launcher "$CUSTOM_GENERATED_LAUNCHER_CONF"
+      ;;
+    both)
+      install_launcher "$CUSTOM_GENERATED_LAUNCHER_CONF"
+      ;;
+    regular)
+      :
+      ;;
+    *)
+      err "Unknown custom launcher: $CUSTOM_LAUNCHER"
+      ;;
+  esac
+
+  say
+  say "Installed: Custom configuration"
+  say "  • Effort: ${CUSTOM_EFFORT}"
+  if ((${#CUSTOM_PACKS[@]} > 0)); then
+    say "  • Packs:  $(IFS=,; echo "${CUSTOM_PACKS[*]}")"
+  else
+    say "  • Packs:  lean only (6 core tools)"
+  fi
+  say
+  case "$CUSTOM_LAUNCHER" in
+    ultra) say "Start with:  claude-lean" ;;
+    regular) say "Start with:  claude" ;;
+    both) say "Start with:  claude-lean (ultra) or claude (regular)" ;;
+  esac
+  say "  Full breakdown: https://0p9b.github.io/claude-code-lean/config.html"
+  print_install_summary
 }
 
 install_regular() {
@@ -439,16 +502,20 @@ install_both() {
 choose_mode() {
   local choice="${CLAUDE_LEAN_MODE:-}"
   local -a menu_labels=(
-    "1) Ultra Lean only — settings + claude-lean (~4.5–5k)"
-    "2) Regular Lean only — settings only, use: claude (~6.5k)"
-    "3) Both (recommended) — claude-lean OR claude per session"
+    "1) Ultra Lean — most stripped down (~4.5–5k, claude-lean)"
+    "2) Regular Lean — 6 tools + default prompt (~6.5k, claude)"
+    "3) Both — install both launchers (recommended)"
+    "4) Custom — wizard: pick tools, effort, launcher"
     "q) Quit without installing"
   )
-  local -a menu_modes=(ultra regular both quit)
+  local -a menu_modes=(ultra regular both custom quit)
   local idx
 
   if [[ -n "$choice" ]]; then
     SELECTED_MODE="$(validate_mode_or_exit "$choice")"
+    if [[ "$SELECTED_MODE" == "custom" && -z "${CLAUDE_LEAN_CUSTOM_PACKS:-}" ]]; then
+      err "Custom mode requires the interactive installer. Run without CLAUDE_LEAN_MODE or set packs via wizard."
+    fi
     return
   fi
 
@@ -457,9 +524,9 @@ choose_mode() {
   ui "  Claude Code Lean installer"
   ui "========================================"
   ui ""
-  ui "All options use the SAME lean settings and these 6 tools:"
-  ui "  Bash · Read · Write · Edit · WebSearch · WebFetch"
-  ui "Everything else is disabled. Effort defaults to medium."
+  ui "Profiles: Ultra = minimal prompt · Regular = default prompt · Custom = you choose"
+  ui "All lean profiles start with 6 tools; everything else disabled by default."
+  ui "Details: https://0p9b.github.io/claude-code-lean/CONFIG.html"
   ui ""
   ui "Choose what to install:"
   ui ""
@@ -468,7 +535,7 @@ choose_mode() {
     idx="$MENU_SELECTED_IDX"
   else
     while true; do
-      ui_n "Type 1 (Ultra), 2 (Regular), 3 (Both), or q to quit: "
+      ui_n "Type 1 (Ultra), 2 (Regular), 3 (Both), 4 (Custom), or q to quit: "
       prompt_read
       choice="$PROMPT_REPLY"
       case "$choice" in
@@ -481,18 +548,21 @@ choose_mode() {
         3 | both | Both | BOTH)
           idx=2
           ;;
-        q | Q | quit | Quit)
+        4 | custom | Custom | CUSTOM)
           idx=3
+          ;;
+        q | Q | quit | Quit)
+          idx=4
           ;;
         *)
           ui "Hmm, \"$choice\" is not valid."
-          ui "Please type:  1 = Ultra  |  2 = Regular  |  3 = Both  |  q = Quit"
+          ui "Please type:  1=Ultra  2=Regular  3=Both  4=Custom  q=Quit"
           continue
           ;;
       esac
 
       local mode="install"
-      if ((idx == 3)); then
+      if ((idx == 4)); then
         mode="quit"
       fi
       if ask_to_confirm "$mode" "${menu_labels[idx]}"; then
@@ -519,6 +589,11 @@ choose_mode() {
       SELECTED_MODE="both"
       ui ""
       ui "→ OK: installing Both (use: claude-lean OR claude)"
+      ;;
+    custom)
+      SELECTED_MODE="custom"
+      ui ""
+      ui "→ OK: starting custom configuration wizard"
       ;;
     quit)
       ui "Cancelled."
@@ -547,6 +622,7 @@ main() {
     ultra) install_ultra ;;
     regular) install_regular ;;
     both) install_both ;;
+    custom) install_custom ;;
     *) err "Internal error: unhandled mode '$SELECTED_MODE'" ;;
   esac
 

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Config breakdown — Claude Code Lean</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    .doc { padding: 3rem 0 4rem; }
+    .doc h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    .doc h2 { font-size: 1.35rem; margin: 2.5rem 0 0.75rem; color: var(--accent); }
+    .doc h3 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
+    .doc p, .doc li { color: var(--text-muted); margin-bottom: 0.65rem; }
+    .doc table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.92rem; }
+    .doc th, .doc td { border: 1px solid var(--border); padding: 0.65rem 0.85rem; text-align: left; }
+    .doc th { background: var(--bg-card); color: var(--text); }
+    .doc ul { padding-left: 1.25rem; margin-bottom: 1rem; }
+    .doc .lead { font-size: 1.05rem; max-width: 720px; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">Claude Code Lean</a>
+      <nav>
+        <a href="index.html#install">Install</a>
+        <a href="config.html">Config</a>
+        <a href="https://github.com/0p9b/claude-code-lean/blob/main/docs/CONFIG.md" target="_blank" rel="noopener">Full docs</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="doc">
+    <div class="container narrow">
+      <h1>Configuration breakdown</h1>
+      <p class="lead">What lean disables by default, how profiles compare, and what Custom mode can re-enable.</p>
+
+      <h2>Profile comparison</h2>
+      <table>
+        <thead><tr><th>Profile</th><th>System prompt</th><th>Context</th><th>Command</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Ultra</strong></td><td>Custom minimal (<code>.</code>)</td><td>~4.5–5k</td><td><code>claude-lean</code></td></tr>
+          <tr><td><strong>Regular</strong></td><td>Claude Code default lean</td><td>~6.5k</td><td><code>claude</code></td></tr>
+          <tr><td><strong>Both</strong></td><td>Pick per session</td><td>Either</td><td>Both</td></tr>
+          <tr><td><strong>Custom</strong></td><td>You choose</td><td>Varies</td><td>Wizard</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Ultra is the most stripped-down at launch.</strong> Regular still uses full lean <code>settings.json</code> — the ~1.8k gap is mostly the product system prompt.</p>
+
+      <h2>Always enabled (lean base)</h2>
+      <p>Six tools: <code>Bash</code> · <code>Read</code> · <code>Write</code> · <code>Edit</code> · <code>WebSearch</code> · <code>WebFetch</code></p>
+      <p>Defaults: <code>effortLevel: medium</code>, <code>outputStyle: lean</code>, OAuth kept (no <code>--bare</code>).</p>
+
+      <h2>Disabled by default</h2>
+      <h3>Environment flags</h3>
+      <p>All set to off: auto memory, org memory, CLAUDE.md injection, skills, agents, advisor, attachments, git instructions, cron, background tasks, thinking.</p>
+
+      <h3>Feature toggles</h3>
+      <p>Hooks, bundled skills, workflows, remote control, connectors, artifact view, agent view, auto memory, thinking summaries — all off.</p>
+
+      <h3>Denied tools</h3>
+      <p>Everything except the six core tools, including: <code>Glob</code>, <code>Grep</code>, <code>Agent</code>, <code>Skill</code>, <code>TodoWrite</code>, <code>Task*</code>, <code>mcp__*</code>, plan/worktree modes, LSP, and more.</p>
+
+      <h2>Custom wizard packs</h2>
+      <table>
+        <thead><tr><th>Pack</th><th>Enables</th></tr></thead>
+        <tbody>
+          <tr><td>search</td><td>Glob, Grep</td></tr>
+          <tr><td>tasks</td><td>TodoWrite, Task*</td></tr>
+          <tr><td>agents</td><td>Agent, plan/worktree modes</td></tr>
+          <tr><td>skills</td><td>Skill, bundled skills</td></tr>
+          <tr><td>mcp</td><td>MCP servers & tools</td></tr>
+          <tr><td>memory</td><td>Auto + org memory</td></tr>
+          <tr><td>claude_md</td><td>CLAUDE.md injection</td></tr>
+          <tr><td>thinking</td><td>Extended thinking UI</td></tr>
+          <tr><td>git</td><td>Git instructions</td></tr>
+          <tr><td>hooks</td><td>User hooks</td></tr>
+          <tr><td>cron</td><td>Cron & background tasks</td></tr>
+          <tr><td>comms</td><td>AskUserQuestion, messaging</td></tr>
+          <tr><td>extra</td><td>LSP, NotebookEdit, workflows, …</td></tr>
+        </tbody>
+      </table>
+
+      <p><a class="btn btn-primary" href="index.html#install">Install now</a></p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>MIT · <a href="https://github.com/0p9b/claude-code-lean">GitHub</a></p>
+    </div>
+  </footer>
+</body>
+</html>
