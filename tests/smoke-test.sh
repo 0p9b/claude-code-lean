@@ -74,13 +74,70 @@ section() { printf '\n=== %s ===\n' "$1"; }
 
 section "Static checks"
 bash -n "${REPO_ROOT}/install.sh" && pass "install.sh syntax (bash -n)" || fail "install.sh syntax (bash -n)"
+bash -n "${REPO_ROOT}/lib/custom-wizard.sh" && pass "custom-wizard.sh syntax (bash -n)" || fail "custom-wizard.sh syntax (bash -n)"
 bash -n "${REPO_ROOT}/bin/claude-lean" && pass "claude-lean syntax (bash -n)" || fail "claude-lean syntax (bash -n)"
 python3 -m json.tool "${REPO_ROOT}/config/settings.json" >/dev/null 2>&1 && pass "settings.json valid JSON" || fail "settings.json valid JSON"
+python3 -m py_compile "${REPO_ROOT}/config/generate-settings.py" 2>/dev/null && pass "generate-settings.py compiles" || fail "generate-settings.py compiles"
 assert_executable "${REPO_ROOT}/bin/claude-lean" "bin/claude-lean executable"
+assert_executable "${REPO_ROOT}/config/generate-settings.py" "generate-settings.py executable"
+assert_file "${REPO_ROOT}/lib/custom-wizard.sh" "custom-wizard.sh present"
+assert_file "${REPO_ROOT}/docs/index.html" "GitHub Pages index.html present"
+assert_file "${REPO_ROOT}/docs/config.html" "GitHub Pages config.html present"
+assert_contains "$(cat "${REPO_ROOT}/docs/index.html")" "Four ways to install" "website lists four install modes"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-11"' "installer version 2026-07-19-11"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'custom) install_custom' "custom install mode present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'atomic_install_file' "atomic install helper present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'validate_mode_or_exit' "mode validation present"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'generate-settings.py' "installer downloads settings generator"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'custom-wizard.sh' "installer downloads custom wizard"
+
+section "Generator: all packs stress"
+GEN_DIR="$(mktemp -d)"
+ALL_PACKS="search,tasks,agents,skills,mcp,memory,claude_md,thinking,git,cron,comms,extra"
+python3 "${REPO_ROOT}/config/generate-settings.py" \
+  --base "${REPO_ROOT}/config/settings.json" \
+  --out-settings "${GEN_DIR}/settings.json" \
+  --packs "$ALL_PACKS" \
+  --hooks \
+  --thinking-ui \
+  --effort low \
+  --launcher \
+  --out-launcher "${GEN_DIR}/claude-lean.conf" >/dev/null
+if python3 -c "
+import json
+s=json.load(open('${GEN_DIR}/settings.json'))
+deny=set(s['permissions']['deny'])
+assert 'Glob' not in deny and 'Agent' not in deny and 'Skill' not in deny
+assert 'mcp__*' not in deny
+assert s['autoMemoryEnabled'] is True
+assert s['disableAllHooks'] is False
+assert s['effortLevel']=='low'
+"; then
+  pass "all-packs stress: settings valid"
+else
+  fail "all-packs stress: settings valid"
+fi
+assert_contains "$(cat "${GEN_DIR}/claude-lean.conf")" 'DISALLOWED=""' "all-packs stress: mcp allowed in launcher"
+rm -rf "$GEN_DIR"
+
+section "Generator: lean-only baseline"
+GEN_DIR="$(mktemp -d)"
+python3 "${REPO_ROOT}/config/generate-settings.py" \
+  --base "${REPO_ROOT}/config/settings.json" \
+  --out-settings "${GEN_DIR}/settings.json" >/dev/null
+if python3 -c "
+import json
+s=json.load(open('${GEN_DIR}/settings.json'))
+deny=set(s['permissions']['deny'])
+for t in ['Glob','Grep','Agent','Skill','TodoWrite','mcp__*']:
+    assert t in deny, t
+assert s['disableAllHooks'] is True
+"; then
+  pass "lean-only generator matches deny-all baseline"
+else
+  fail "lean-only generator matches deny-all baseline"
+fi
+rm -rf "$GEN_DIR"
 
 section "Custom settings generator"
 GEN_DIR="$(mktemp -d)"
@@ -169,6 +226,11 @@ if CLAUDE_LEAN_MODE=ultr bash "${REPO_ROOT}/install.sh" >/dev/null 2>&1; then
 else
   pass "rejects typo mode ultr"
 fi
+if CLAUDE_LEAN_MODE=custom bash "${REPO_ROOT}/install.sh" >/dev/null 2>&1; then
+  fail "rejects non-interactive custom mode"
+else
+  pass "rejects non-interactive custom mode"
+fi
 teardown_test_home; trap - EXIT
 
 section "Existing user config: backup + replace settings"
@@ -217,9 +279,19 @@ TMP_INSTALL="$(mktemp)"
 cp "${REPO_ROOT}/install.sh" "$TMP_INSTALL"
 export CLAUDE_LEAN_RAW_BASE="file://${REPO_ROOT}"
 OUT="$(CLAUDE_LEAN_MODE=regular bash "$TMP_INSTALL" 2>&1)"
-rm -f "$TMP_INSTALL"
 assert_contains "$OUT" "Downloading install files" "file:// REPO_RAW triggers download path"
 assert_file "${HOME}/.claude/settings.json" "file:// download installs settings"
+rm -f "$TMP_INSTALL"
+teardown_test_home; trap - EXIT
+
+section "Download path fetches all assets"
+setup_test_home; trap teardown_test_home EXIT
+TMP_INSTALL="$(mktemp)"
+cp "${REPO_ROOT}/install.sh" "$TMP_INSTALL"
+export CLAUDE_LEAN_RAW_BASE="file://${REPO_ROOT}"
+CLAUDE_LEAN_MODE=both bash "$TMP_INSTALL" >/dev/null 2>&1
+rm -f "$TMP_INSTALL"
+assert_file "${HOME}/.local/bin/claude-lean" "full download path installs both"
 teardown_test_home; trap - EXIT
 
 section "claude-lean launcher"
@@ -232,6 +304,7 @@ assert_contains "$INVOCATION" "--tools Bash,Edit,Read,Write,WebFetch,WebSearch" 
 assert_contains "$INVOCATION" "--disallowedTools mcp__*" "blocks mcp"
 assert_contains "$INVOCATION" "--effort medium" "effort medium"
 assert_contains "$INVOCATION" "--print test" "forwards args"
+assert_no_file "${HOME}/.claude/claude-lean.conf" "preset both: no launcher conf (uses defaults)"
 teardown_test_home; trap - EXIT
 
 section "claude-lean custom prompt path (~ expansion)"
@@ -323,6 +396,45 @@ assert_contains "$OUT" "Back to menu" "TTY confirm-no returns"
 assert_file "${HOME}/.local/bin/claude-lean" "TTY confirm-no then yes installs"
 teardown_test_home; trap - EXIT
 
+section "TTY: custom lean regular (4y + wizard)"
+setup_test_home; trap teardown_test_home EXIT
+# Main: 4=custom, y=confirm | Wizard: 2=regular launcher, 2=medium effort | 13x n=no packs | y=confirm
+OUT="$(run_install_tty '4y22nnnnnnnnnnnnny')"
+assert_file "${HOME}/.claude/settings.json" "TTY custom: settings installed"
+assert_no_file "${HOME}/.local/bin/claude-lean" "TTY custom regular: no launcher"
+assert_contains "$OUT" "Custom configuration wizard" "TTY custom: wizard shown"
+assert_contains "$OUT" "Installed: Custom configuration" "TTY custom: success message"
+teardown_test_home; trap - EXIT
+
+section "TTY: custom ultra with search pack"
+setup_test_home; trap teardown_test_home EXIT
+# 4y | 1=ultra 2=medium | y=search yes | 12x n | y confirm
+OUT="$(run_install_tty '4y12ynnnnnnnnnnnny')"
+assert_file "${HOME}/.local/bin/claude-lean" "TTY custom ultra: launcher installed"
+assert_file "${HOME}/.claude/claude-lean.conf" "TTY custom ultra: conf written"
+if python3 -c "import json; assert 'Glob' not in json.load(open('${HOME}/.claude/settings.json'))['permissions']['deny']"; then
+  pass "TTY custom ultra: Glob enabled"
+else
+  fail "TTY custom ultra: Glob enabled"
+fi
+teardown_test_home; trap - EXIT
+
+section "Stress: rapid reinstall cycle"
+setup_test_home; trap teardown_test_home EXIT
+for _ in 1 2 3 4 5; do
+  CLAUDE_LEAN_MODE=ultra bash "${REPO_ROOT}/install.sh" >/dev/null
+  CLAUDE_LEAN_MODE=regular bash "${REPO_ROOT}/install.sh" >/dev/null
+  CLAUDE_LEAN_MODE=both bash "${REPO_ROOT}/install.sh" >/dev/null
+done
+assert_file "${HOME}/.local/bin/claude-lean" "stress cycle: final both state ok"
+BACKUP_COUNT="$(ls "${HOME}/.claude/settings.json.bak."* 2>/dev/null | wc -l)"
+if ((BACKUP_COUNT >= 1)); then
+  pass "stress cycle: backups created ($BACKUP_COUNT)"
+else
+  fail "stress cycle: backups created (got $BACKUP_COUNT)"
+fi
+teardown_test_home; trap - EXIT
+
 section "curl|bash pipe simulation"
 setup_test_home; trap teardown_test_home EXIT
 printf '1y' | script -q -c "curl -fsSL file://${REPO_ROOT}/install.sh | bash" "${TEST_HOME}/pipe.log" >/dev/null 2>&1 || true
@@ -355,7 +467,7 @@ if [[ -n "$ORIGIN_INSTALL" ]]; then
 else
   skip "origin install.sh unavailable"
 fi
-for asset in config/settings.json bin/claude-lean templates/system-prompt-lean.txt templates/output-styles/lean.md; do
+for asset in config/settings.json config/generate-settings.py bin/claude-lean lib/custom-wizard.sh templates/system-prompt-lean.txt templates/output-styles/lean.md docs/index.html docs/config.html; do
   LH="$(sha256sum "${REPO_ROOT}/${asset}" | awk '{print $1}')"
   OH="$(git -C "${REPO_ROOT}" show "origin/main:${asset}" 2>/dev/null | sha256sum | awk '{print $1}' || true)"
   if [[ -n "$OH" && "$LH" == "$OH" ]]; then
@@ -366,6 +478,19 @@ for asset in config/settings.json bin/claude-lean templates/system-prompt-lean.t
     skip "origin pending push: $asset"
   fi
 done
+
+section "Remote install.sh live fetch"
+REMOTE_INSTALL="$(curl -fsSL "https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh" 2>/dev/null || true)"
+LOCAL_VER="$(grep -o 'INSTALLER_VERSION="[^"]*"' "${REPO_ROOT}/install.sh" | head -1)"
+if [[ -n "$REMOTE_INSTALL" && "$REMOTE_INSTALL" == *"$LOCAL_VER"* ]]; then
+  pass "live raw install.sh version matches ($LOCAL_VER)"
+else
+  fail "live raw install.sh version mismatch (expected $LOCAL_VER)"
+fi
+if [[ -n "$REMOTE_INSTALL" ]]; then
+  assert_contains "$REMOTE_INSTALL" "install_custom" "live install.sh has custom mode"
+  assert_contains "$REMOTE_INSTALL" "generate-settings.py" "live install.sh downloads generator"
+fi
 
 printf '\n========================================\n'
 printf 'Results: %d passed, %d failed, %d skipped\n' "$PASS" "$FAIL" "$SKIP"
