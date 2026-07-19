@@ -66,10 +66,14 @@ resolve_sources() {
 
   mkdir -p "$WORKDIR/config" "$WORKDIR/bin" "$WORKDIR/templates/output-styles"
 
-  curl -fsSL "$REPO_RAW/config/settings.json" -o "$WORKDIR/config/settings.json"
-  curl -fsSL "$REPO_RAW/bin/claude-lean" -o "$WORKDIR/bin/claude-lean"
-  curl -fsSL "$REPO_RAW/templates/system-prompt-lean.txt" -o "$WORKDIR/templates/system-prompt-lean.txt"
-  curl -fsSL "$REPO_RAW/templates/output-styles/lean.md" -o "$WORKDIR/templates/output-styles/lean.md"
+  # Bust raw.githubusercontent.com CDN cache (max-age=300).
+  local bust
+  bust="$(date +%s)"
+
+  curl -fsSL "$REPO_RAW/config/settings.json?${bust}" -o "$WORKDIR/config/settings.json"
+  curl -fsSL "$REPO_RAW/bin/claude-lean?${bust}" -o "$WORKDIR/bin/claude-lean"
+  curl -fsSL "$REPO_RAW/templates/system-prompt-lean.txt?${bust}" -o "$WORKDIR/templates/system-prompt-lean.txt"
+  curl -fsSL "$REPO_RAW/templates/output-styles/lean.md?${bust}" -o "$WORKDIR/templates/output-styles/lean.md"
 
   chmod +x "$WORKDIR/bin/claude-lean"
 }
@@ -144,45 +148,51 @@ choose_mode() {
     return
   fi
 
-  ui ""
-  ui "========================================"
-  ui "  Claude Code Lean installer"
-  ui "========================================"
-  ui ""
-  ui "Both options install the same lean settings."
-  ui "Enabled tools in both:"
-  ui "  Bash · Read · Write · Edit · WebSearch · WebFetch"
-  ui "Everything else is disabled. Effort = medium."
-  ui ""
-  ui "The ONLY difference is the system prompt:"
-  ui ""
-  ui "  1) Ultra Lean"
-  ui "     - Replaces Claude Code's system prompt with a tiny custom one"
-  ui "     - Lowest startup context (~4.5–5k tokens)"
-  ui "     - Launch with:  claude-lean"
-  ui ""
-  ui "  2) Regular Lean"
-  ui "     - Keeps Claude Code's default lean system prompt"
-  ui "     - Slightly higher startup context (~6.5k tokens)"
-  ui "     - Launch with:  claude"
-  ui ""
-  ui "  q) Quit without installing"
-  ui ""
+  # Always print the menu to the real terminal (never stdout-only).
+  local menu_out="/dev/tty"
+  [[ -w /dev/tty ]] || menu_out="/dev/stderr"
+  cat <<'MENU' >"$menu_out"
+
+========================================
+  Claude Code Lean installer
+========================================
+
+Both options install the SAME lean settings and these 6 tools:
+  Bash · Read · Write · Edit · WebSearch · WebFetch
+Everything else is disabled. Effort defaults to medium.
+
+Pick ONE — the only difference is the system prompt:
+
+  1) Ultra Lean
+     What it is:  replaces Claude Code's built-in system prompt with a
+                  tiny custom prompt (lowest context)
+     Typical /context startup: ~4.5–5k tokens
+     After install, run:  claude-lean
+
+  2) Regular Lean
+     What it is:  keeps Claude Code's normal/default lean system prompt
+                  (same tools, ~1.8k more context than Ultra)
+     Typical /context startup: ~6.5k tokens
+     After install, run:  claude
+
+  q) Quit without installing
+
+MENU
 
   while true; do
-    ui_n "Choose [1 = Ultra Lean / 2 = Regular Lean / q = Quit]: "
+    ui_n "Type 1 for Ultra Lean, 2 for Regular Lean, or q to quit: "
     choice="$(prompt_read)"
     case "$choice" in
       1|ultra|Ultra|ULTRA)
         SELECTED_MODE="ultra"
         ui ""
-        ui "→ Selected: Ultra Lean (claude-lean)"
+        ui "→ OK: installing Ultra Lean (you will use: claude-lean)"
         return
         ;;
       2|regular|Regular|REGULAR)
         SELECTED_MODE="regular"
         ui ""
-        ui "→ Selected: Regular Lean (claude)"
+        ui "→ OK: installing Regular Lean (you will use: claude)"
         return
         ;;
       q|Q|quit|Quit)
@@ -190,7 +200,8 @@ choose_mode() {
         exit 0
         ;;
       *)
-        ui "Invalid choice. Type 1 for Ultra Lean, 2 for Regular Lean, or q to quit."
+        ui "Hmm, \"$choice\" is not valid."
+        ui "Please type:  1  = Ultra Lean   |   2  = Regular Lean   |   q  = Quit"
         ;;
     esac
   done
