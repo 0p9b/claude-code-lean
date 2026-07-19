@@ -7,12 +7,13 @@ set -euo pipefail
 # Prefer GitHub raw — jsDelivr @main can stay stale for a long time after pushes.
 # Override if needed: CLAUDE_LEAN_RAW_BASE=https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@COMMIT
 REPO_RAW="${CLAUDE_LEAN_RAW_BASE:-https://raw.githubusercontent.com/0p9b/claude-code-lean/main}"
-CLAUDE_DIR="${HOME}/.claude"
-BIN_DIR="${HOME}/.local/bin"
+CLAUDE_DIR="${CLAUDE_LEAN_CLAUDE_DIR:-${HOME}/.claude}"
+BIN_DIR="${CLAUDE_LEAN_BIN_DIR:-${HOME}/.local/bin}"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-9"
+INSTALLER_VERSION="2026-07-19-10"
+VALID_MODES=(ultra regular both)
 
 TUI_IN="/dev/tty"
 TUI_OUT="/dev/tty"
@@ -275,6 +276,45 @@ trap cleanup EXIT
 say() { printf '%s\n' "$*"; }
 err() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 
+normalize_mode() {
+  printf '%s' "${1,,}"
+}
+
+is_valid_mode() {
+  local mode="$1" m
+  for m in "${VALID_MODES[@]}"; do
+    if [[ "$mode" == "$m" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+validate_mode_or_exit() {
+  local mode
+  mode="$(normalize_mode "$1")"
+  if is_valid_mode "$mode"; then
+    printf '%s' "$mode"
+    return 0
+  fi
+  err "Unknown install mode: '$1' (expected: ultra, regular, or both)"
+}
+
+atomic_install_file() {
+  local src="$1" dest="$2"
+  local tmp="${dest}.tmp.$$"
+  cp "$src" "$tmp"
+  chmod --reference="$src" "$tmp" 2>/dev/null || chmod 0644 "$tmp"
+  mv -f "$tmp" "$dest"
+}
+
+verify_nonempty_file() {
+  local path="$1" label="$2"
+  if [[ ! -s "$path" ]]; then
+    err "Download failed or empty: ${label}"
+  fi
+}
+
 resolve_sources() {
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || true)"
@@ -298,6 +338,11 @@ resolve_sources() {
   curl -fsSL "$REPO_RAW/templates/output-styles/lean.md" -o "$WORKDIR/templates/output-styles/lean.md"
 
   chmod +x "$WORKDIR/bin/claude-lean"
+
+  verify_nonempty_file "$WORKDIR/config/settings.json" "config/settings.json"
+  verify_nonempty_file "$WORKDIR/bin/claude-lean" "bin/claude-lean"
+  verify_nonempty_file "$WORKDIR/templates/system-prompt-lean.txt" "templates/system-prompt-lean.txt"
+  verify_nonempty_file "$WORKDIR/templates/output-styles/lean.md" "templates/output-styles/lean.md"
 }
 
 backup_if_exists() {
@@ -323,20 +368,31 @@ install_shared() {
 
   say "Installing shared lean settings…"
   backup_if_exists "${CLAUDE_DIR}/settings.json"
-  cp "$WORKDIR/config/settings.json" "${CLAUDE_DIR}/settings.json"
+  atomic_install_file "$WORKDIR/config/settings.json" "${CLAUDE_DIR}/settings.json"
 
   backup_if_exists "${CLAUDE_DIR}/output-styles/lean.md"
-  cp "$WORKDIR/templates/output-styles/lean.md" "${CLAUDE_DIR}/output-styles/lean.md"
+  atomic_install_file "$WORKDIR/templates/output-styles/lean.md" "${CLAUDE_DIR}/output-styles/lean.md"
 }
 
 install_launcher() {
   say "Installing claude-lean launcher…"
   backup_if_exists "${CLAUDE_DIR}/system-prompt-lean.txt"
-  cp "$WORKDIR/templates/system-prompt-lean.txt" "${CLAUDE_DIR}/system-prompt-lean.txt"
+  atomic_install_file "$WORKDIR/templates/system-prompt-lean.txt" "${CLAUDE_DIR}/system-prompt-lean.txt"
 
-  cp "$WORKDIR/bin/claude-lean" "${BIN_DIR}/claude-lean"
+  atomic_install_file "$WORKDIR/bin/claude-lean" "${BIN_DIR}/claude-lean"
   chmod +x "${BIN_DIR}/claude-lean"
   ensure_path_note
+}
+
+print_install_summary() {
+  say
+  say "Installed to:"
+  say "  settings:      ${CLAUDE_DIR}/settings.json"
+  say "  output style:  ${CLAUDE_DIR}/output-styles/lean.md"
+  if [[ -f "${BIN_DIR}/claude-lean" ]]; then
+    say "  launcher:      ${BIN_DIR}/claude-lean"
+    say "  system prompt: ${CLAUDE_DIR}/system-prompt-lean.txt"
+  fi
 }
 
 install_regular() {
@@ -348,6 +404,7 @@ install_regular() {
   say "  • Effort: medium"
   say
   say "Start with:  claude"
+  print_install_summary
 }
 
 install_ultra() {
@@ -361,6 +418,7 @@ install_ultra() {
   say "  • Effort: medium"
   say
   say "Start with:  claude-lean"
+  print_install_summary
 }
 
 install_both() {
@@ -375,6 +433,7 @@ install_both() {
   say "Use either launcher anytime:"
   say "  claude-lean  → Ultra Lean (custom minimal system prompt, ~4.5–5k)"
   say "  claude       → Regular Lean (default Claude Code system prompt, ~6.5k)"
+  print_install_summary
 }
 
 choose_mode() {
@@ -389,7 +448,7 @@ choose_mode() {
   local idx
 
   if [[ -n "$choice" ]]; then
-    SELECTED_MODE="$choice"
+    SELECTED_MODE="$(validate_mode_or_exit "$choice")"
     return
   fi
 
@@ -440,7 +499,7 @@ choose_mode() {
         break
       fi
       ui ""
-      ui "Cancelled — pick another option:"
+      ui "Back to menu — pick another option:"
       ui ""
     done
   fi
@@ -488,7 +547,7 @@ main() {
     ultra) install_ultra ;;
     regular) install_regular ;;
     both) install_both ;;
-    *) err "Unknown mode: $SELECTED_MODE" ;;
+    *) err "Internal error: unhandled mode '$SELECTED_MODE'" ;;
   esac
 
   say

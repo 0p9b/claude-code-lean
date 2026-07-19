@@ -12,11 +12,20 @@
 
 set -euo pipefail
 
-PROMPT_FILE="${CLAUDE_LEAN_PROMPT_FILE:-$HOME/.claude/system-prompt-lean.txt}"
+expand_home() {
+  local path="$1"
+  case "$path" in
+    "~") printf '%s' "$HOME" ;;
+    "~/"*) printf '%s/%s' "$HOME" "${path:2}" ;;
+    *) printf '%s' "$path" ;;
+  esac
+}
+
+PROMPT_FILE="$(expand_home "${CLAUDE_LEAN_PROMPT_FILE:-$HOME/.claude/system-prompt-lean.txt}")"
 
 if [[ ! -f "$PROMPT_FILE" ]]; then
   echo "claude-lean: missing system prompt file: $PROMPT_FILE" >&2
-  echo "Run ./install.sh from this repo first." >&2
+  echo "Run the installer: curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash" >&2
   exit 1
 fi
 
