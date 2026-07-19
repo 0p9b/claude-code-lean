@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cut Claude Code CLI startup context. Six tools. Pick your system prompt. One-command install.">
+  <title>Claude Code Lean</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="#">Claude Code Lean</a>
+      <nav>
+        <a href="#install">Install</a>
+        <a href="#options">Options</a>
+        <a href="#features">Features</a>
+        <a href="https://github.com/0p9b/claude-code-lean" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-inner">
+        <p class="eyebrow">Open source · MIT · Claude Code CLI</p>
+        <h1>Lean Claude Code.<br>Less context. Same power.</h1>
+        <p class="hero-lead">
+          Cut startup tokens to ~4.5–6.5k. Keep six essential tools.
+          Pick Ultra or Regular lean — or install both and choose per session.
+        </p>
+
+        <div class="install-box" id="install">
+          <div class="install-box-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="install-label">One-command install</span>
+          </div>
+          <div class="install-command-wrap">
+            <code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash</code>
+            <button type="button" class="copy-btn" id="copy-btn" aria-label="Copy install command">
+              <span class="copy-label">Copy</span>
+            </button>
+          </div>
+        </div>
+
+        <p class="hero-note">
+          Interactive menu with confirm step · OAuth still works · No API key required
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#options">See install options</a>
+          <a class="btn btn-ghost" href="https://github.com/0p9b/claude-code-lean" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="options">
+      <div class="container">
+        <h2>Three ways to install</h2>
+        <p class="section-lead">Same lean settings and six tools every time. Only the system prompt differs.</p>
+
+        <div class="cards">
+          <article class="card">
+            <span class="card-num">1</span>
+            <h3>Ultra Lean</h3>
+            <p class="card-stat">~4.5–5k tokens</p>
+            <p>Settings + <code>claude-lean</code> launcher with a minimal custom system prompt.</p>
+            <p class="card-run">Run: <code>claude-lean</code></p>
+          </article>
+
+          <article class="card">
+            <span class="card-num">2</span>
+            <h3>Regular Lean</h3>
+            <p class="card-stat">~6.5k tokens</p>
+            <p>Settings only. Uses Claude Code’s default lean system prompt.</p>
+            <p class="card-run">Run: <code>claude</code></p>
+          </article>
+
+          <article class="card card-featured">
+            <span class="badge">Recommended</span>
+            <span class="card-num">3</span>
+            <h3>Both</h3>
+            <p class="card-stat">Best of both</p>
+            <p>Install everything. Pick <code>claude-lean</code> or <code>claude</code> when you launch.</p>
+            <p class="card-run">Run either command</p>
+          </article>
+        </div>
+
+        <div class="code-block secondary-cmd">
+          <p class="code-label">Skip the menu (non-interactive)</p>
+          <code>curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | CLAUDE_LEAN_MODE=both bash</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="features">
+      <div class="container">
+        <div class="split">
+          <div>
+            <h2>What you get</h2>
+            <p class="section-lead">Opinionated defaults for a smaller, faster Claude Code session.</p>
+          </div>
+          <div class="feature-grid">
+            <div class="feature">
+              <h4>Enabled</h4>
+              <p>Bash · Read · Write · Edit · WebSearch · WebFetch</p>
+            </div>
+            <div class="feature">
+              <h4>Disabled</h4>
+              <p>MCP, skills, workflows, agents, plan mode, cron, tasks, LSP, auto memory, and more</p>
+            </div>
+            <div class="feature">
+              <h4>Defaults</h4>
+              <p>Effort <code>medium</code> · OAuth login · No <code>--bare</code></p>
+            </div>
+            <div class="feature">
+              <h4>Safe install</h4>
+              <p>Backs up existing <code>settings.json</code> before overwriting</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container narrow">
+        <h2>After install</h2>
+        <div class="steps">
+          <div class="step">
+            <span class="step-n">1</span>
+            <p>Restart any open Claude Code sessions</p>
+          </div>
+          <div class="step">
+            <span class="step-n">2</span>
+            <p>Run <code>claude-lean</code> or <code>claude</code></p>
+          </div>
+          <div class="step">
+            <span class="step-n">3</span>
+            <p>Type <code>/context</code> to verify token usage</p>
+          </div>
+        </div>
+        <p class="fine-print">
+          Requires <a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener noreferrer">Claude Code CLI</a> and <code>curl</code>.
+          If <code>claude-lean</code> isn’t found: <code>export PATH="$HOME/.local/bin:$PATH"</code>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>MIT License · <a href="https://github.com/0p9b/claude-code-lean">0p9b/claude-code-lean</a></p>
+      <p>Not affiliated with Anthropic.</p>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>

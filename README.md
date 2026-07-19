@@ -1,5 +1,7 @@
 # Claude Code Lean
 
+**Website:** https://0p9b.github.io/claude-code-lean/
+
 Cut Claude Code CLI startup context. Keep six tools. Pick your system prompt.
 
 ## Install (one command)
