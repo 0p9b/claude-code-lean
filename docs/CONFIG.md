@@ -4,20 +4,21 @@ How Claude Code Lean strips context, what stays enabled, and how profiles compar
 
 ## Profile overview
 
-| Profile | System prompt | Startup context | Launcher | Settings |
-|--------|----------------|-----------------|----------|----------|
-| **Ultra Lean** | Custom minimal (`.`) | ~4.5–5k | `claude-lean` | Full lean defaults |
-| **Regular Lean** | Claude Code default lean | ~6.5k | `claude` | Full lean defaults |
-| **Both** | Pick per session | Either | Both commands | Full lean defaults |
-| **Custom** | You choose | Varies | Wizard-driven | Tailored packs |
+| Profile | System prompt | Tools | Thinking | Startup context | Launcher |
+|--------|----------------|-------|----------|-----------------|----------|
+| **Ultra Lean** | Custom minimal (`.`) | 6 core | Off | ~4.5–5k | `claude-lean` |
+| **Regular Lean** | Claude Code default lean | 6 core | Off | ~6.5k | `claude` |
+| **Balanced** | Claude Code default lean | 6 + Glob/Grep/TodoWrite | **On** | ~7–9k | `claude` |
+| **Both** | Pick Ultra or Regular | 6 core | Off | Either | both commands |
+| **Custom** | You choose | Wizard packs | Optional | Varies | Wizard-driven |
 
-**Ultra is the most stripped-down at launch** — the ~1.8k gap vs Regular is almost entirely the product system prompt. Both profiles share the same `settings.json` lean defaults unless you use **Custom**.
+**Ultra is the most stripped-down at launch.** Regular keeps the same lean deny list — the ~1.8k gap is mostly the product system prompt. **Balanced** sits between Regular and Custom: still major savings, but code search + todos + thinking.
 
 ---
 
-## Enabled by default (all lean profiles)
+## Enabled by default
 
-### Tools (6)
+### Lean base tools (Ultra / Regular / Both)
 
 | Tool | Purpose |
 |------|---------|
@@ -27,6 +28,15 @@ How Claude Code Lean strips context, what stays enabled, and how profiles compar
 | `Edit` | Edit files |
 | `WebSearch` | Search the web |
 | `WebFetch` | Fetch URLs |
+
+### Balanced extras
+
+| Tool / feature | Purpose |
+|----------------|---------|
+| `Glob` | Find files by pattern |
+| `Grep` | Search file contents |
+| `TodoWrite` | Simple checklist |
+| Thinking | Extended thinking UI on |
 
 ### Settings defaults
 
@@ -39,7 +49,7 @@ How Claude Code Lean strips context, what stays enabled, and how profiles compar
 
 ---
 
-## Disabled by default
+## Disabled by default (lean base)
 
 ### Environment flags (`env`)
 
@@ -62,6 +72,8 @@ All set to `"1"` (= off) in lean defaults:
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | Background tasks |
 | `CLAUDE_CODE_DISABLE_THINKING` | Extended thinking |
 
+*(Balanced clears `CLAUDE_CODE_DISABLE_THINKING` and turns thinking UI on.)*
+
 ### Feature toggles
 
 | Setting | Lean default |
@@ -74,8 +86,8 @@ All set to `"1"` (= off) in lean defaults:
 | `disableArtifact` | `true` |
 | `disableAgentView` | `true` |
 | `autoMemoryEnabled` | `false` |
-| `alwaysThinkingEnabled` | `false` |
-| `showThinkingSummaries` | `false` |
+| `alwaysThinkingEnabled` | `false` (Balanced: `true`) |
+| `showThinkingSummaries` | `false` (Balanced: `true`) |
 | `includeGitInstructions` | `false` |
 | `includeCoAuthoredBy` | `false` |
 | `skillListingBudgetFraction` | `0.001` |
@@ -84,12 +96,12 @@ All set to `"1"` (= off) in lean defaults:
 
 ### Denied tools (`permissions.deny`)
 
-Everything except the six core tools:
+Everything except the six core tools (lean base):
 
 | Category | Tools blocked |
 |----------|---------------|
-| **Search** | `Glob`, `Grep` |
-| **Tasks** | `TodoWrite`, `TaskCreate`, `TaskGet`, `TaskList`, `TaskOutput`, `TaskStop`, `TaskUpdate` |
+| **Search** | `Glob`, `Grep` *(enabled in Balanced)* |
+| **Tasks** | `TodoWrite` *(enabled in Balanced)*, `TaskCreate`, `TaskGet`, `TaskList`, `TaskOutput`, `TaskStop`, `TaskUpdate` |
 | **Agents / plan** | `Agent`, `EnterPlanMode`, `ExitPlanMode`, `EnterWorktree`, `ExitWorktree` |
 | **Skills** | `Skill`, `ToolSearch` |
 | **MCP** | `mcp__*`, `ListMcpResourcesTool`, `ReadMcpResourceTool`, `WaitForMcpServers` |
@@ -105,7 +117,8 @@ The installer wizard lets you add optimized packs on top of the lean base:
 | Pack | Enables | Best for |
 |------|---------|----------|
 | **search** | `Glob`, `Grep` | Codebase navigation |
-| **tasks** | `TodoWrite`, `Task*` | Multi-step work tracking |
+| **todos** | `TodoWrite` | Simple checklists |
+| **tasks** | `TodoWrite`, `Task*` | Full task suite |
 | **agents** | `Agent`, plan/worktree modes | Subagents & plan mode |
 | **skills** | `Skill`, bundled skills | Skill workflows |
 | **mcp** | MCP servers & tools | Connectors / MCP |
@@ -118,9 +131,7 @@ The installer wizard lets you add optimized packs on top of the lean base:
 | **comms** | AskUserQuestion, messaging | Interactive flows |
 | **extra** | LSP, NotebookEdit, workflows, etc. | Power-user tooling |
 
-Custom installs write:
+Generated files (Custom with ultra/both launcher):
 
-- `~/.claude/settings.json` — generated from your choices
+- `~/.claude/settings.json` — permissions + env
 - `~/.claude/claude-lean.conf` — tool list for `claude-lean` (if ultra/both launcher selected)
-
-Re-run the installer anytime to reconfigure. Existing files are backed up with a timestamp suffix.

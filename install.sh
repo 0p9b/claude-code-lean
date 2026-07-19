@@ -12,8 +12,8 @@ BIN_DIR="${CLAUDE_LEAN_BIN_DIR:-${HOME}/.local/bin}"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-12"
-VALID_MODES=(ultra regular both custom)
+INSTALLER_VERSION="2026-07-19-13"
+VALID_MODES=(ultra regular balanced both custom)
 
 TUI_IN="/dev/tty"
 TUI_OUT="/dev/tty"
@@ -303,7 +303,7 @@ validate_mode_or_exit() {
     printf '%s' "$mode"
     return 0
   fi
-  err "Unknown install mode: '$1' (expected: ultra, regular, both, or custom)"
+  err "Unknown install mode: '$1' (expected: ultra, regular, balanced, both, or custom)"
 }
 
 atomic_install_file() {
@@ -341,6 +341,7 @@ resolve_sources() {
   mkdir -p "$WORKDIR/config" "$WORKDIR/bin" "$WORKDIR/lib" "$WORKDIR/templates/output-styles"
 
   curl -fsSL "$REPO_RAW/config/settings.json" -o "$WORKDIR/config/settings.json"
+  curl -fsSL "$REPO_RAW/config/settings-balanced.json" -o "$WORKDIR/config/settings-balanced.json"
   curl -fsSL "$REPO_RAW/config/generate-settings.py" -o "$WORKDIR/config/generate-settings.py"
   curl -fsSL "$REPO_RAW/lib/custom-wizard.sh" -o "$WORKDIR/lib/custom-wizard.sh"
   curl -fsSL "$REPO_RAW/bin/claude-lean" -o "$WORKDIR/bin/claude-lean"
@@ -352,6 +353,7 @@ resolve_sources() {
   source "${WORKDIR}/lib/custom-wizard.sh"
 
   verify_nonempty_file "$WORKDIR/config/settings.json" "config/settings.json"
+  verify_nonempty_file "$WORKDIR/config/settings-balanced.json" "config/settings-balanced.json"
   verify_nonempty_file "$WORKDIR/config/generate-settings.py" "config/generate-settings.py"
   verify_nonempty_file "$WORKDIR/lib/custom-wizard.sh" "lib/custom-wizard.sh"
   verify_nonempty_file "$WORKDIR/bin/claude-lean" "bin/claude-lean"
@@ -475,6 +477,19 @@ install_regular() {
   print_install_summary
 }
 
+install_balanced() {
+  install_shared "$WORKDIR/config/settings-balanced.json"
+  say
+  say "Installed: Balanced"
+  say "  • Core 6 + Glob, Grep, TodoWrite"
+  say "  • Thinking enabled"
+  say "  • Claude Code default system prompt"
+  say "  • Effort: medium"
+  say
+  say "Start with:  claude"
+  print_install_summary
+}
+
 install_ultra() {
   install_shared
   install_launcher
@@ -494,7 +509,7 @@ install_both() {
   install_launcher
 
   say
-  say "Installed: Both (recommended)"
+  say "Installed: Both Ultra + Regular"
   say "  • Same lean settings + six tools for either command"
   say "  • Effort: medium"
   say
@@ -507,19 +522,20 @@ install_both() {
 choose_mode() {
   local choice="${CLAUDE_LEAN_MODE:-}"
   local -a menu_labels=(
-    "1) Ultra Lean — most stripped down (~4.5–5k, claude-lean)"
+    "1) Ultra Lean — most stripped (~4.5–5k, claude-lean)"
     "2) Regular Lean — 6 tools + default prompt (~6.5k, claude)"
-    "3) Both — install both launchers (recommended)"
-    "4) Custom — wizard: pick tools, effort, launcher"
+    "3) Balanced — +Glob/Grep/TodoWrite + thinking (~7–9k, claude)"
+    "4) Both — Ultra + Regular launchers (lean 6 tools)"
+    "5) Custom — wizard: pick tools, effort, launcher"
     "q) Quit without installing"
   )
-  local -a menu_modes=(ultra regular both custom quit)
+  local -a menu_modes=(ultra regular balanced both custom quit)
   local idx
 
   if [[ -n "$choice" ]]; then
     SELECTED_MODE="$(validate_mode_or_exit "$choice")"
     if [[ "$SELECTED_MODE" == "custom" ]]; then
-      err "Custom mode requires the interactive menu. Re-run without CLAUDE_LEAN_MODE and pick option 4."
+      err "Custom mode requires the interactive menu. Re-run without CLAUDE_LEAN_MODE and pick option 5."
     fi
     return
   fi
@@ -529,8 +545,8 @@ choose_mode() {
   ui "  Claude Code Lean installer"
   ui "========================================"
   ui ""
-  ui "Profiles: Ultra = minimal prompt · Regular = default prompt · Custom = you choose"
-  ui "All lean profiles start with 6 tools; everything else disabled by default."
+  ui "Profiles: Ultra → Regular → Balanced → Custom"
+  ui "Ultra/Regular: 6 tools. Balanced: +search + todos + thinking."
   ui "Details: https://0p9b.github.io/claude-code-lean/config.html"
   ui ""
   ui "Choose what to install:"
@@ -540,7 +556,7 @@ choose_mode() {
     idx="$MENU_SELECTED_IDX"
   else
     while true; do
-      ui_n "Type 1 (Ultra), 2 (Regular), 3 (Both), 4 (Custom), or q to quit: "
+      ui_n "Type 1–5 or q to quit: "
       prompt_read
       choice="$PROMPT_REPLY"
       case "$choice" in
@@ -550,24 +566,27 @@ choose_mode() {
         2 | regular | Regular | REGULAR)
           idx=1
           ;;
-        3 | both | Both | BOTH)
+        3 | balanced | Balanced | BALANCED)
           idx=2
           ;;
-        4 | custom | Custom | CUSTOM)
+        4 | both | Both | BOTH)
           idx=3
           ;;
-        q | Q | quit | Quit)
+        5 | custom | Custom | CUSTOM)
           idx=4
+          ;;
+        q | Q | quit | Quit)
+          idx=5
           ;;
         *)
           ui "Hmm, \"$choice\" is not valid."
-          ui "Please type:  1=Ultra  2=Regular  3=Both  4=Custom  q=Quit"
+          ui "Please type:  1=Ultra  2=Regular  3=Balanced  4=Both  5=Custom  q=Quit"
           continue
           ;;
       esac
 
       local mode="install"
-      if ((idx == 4)); then
+      if ((idx == 5)); then
         mode="quit"
       fi
       if ask_to_confirm "$mode" "${menu_labels[idx]}"; then
@@ -589,6 +608,11 @@ choose_mode() {
       SELECTED_MODE="regular"
       ui ""
       ui "→ OK: installing Regular Lean only (use: claude)"
+      ;;
+    balanced)
+      SELECTED_MODE="balanced"
+      ui ""
+      ui "→ OK: installing Balanced (use: claude)"
       ;;
     both)
       SELECTED_MODE="both"
@@ -626,6 +650,7 @@ main() {
   case "$SELECTED_MODE" in
     ultra) install_ultra ;;
     regular) install_regular ;;
+    balanced) install_balanced ;;
     both) install_both ;;
     custom) install_custom ;;
     *) err "Internal error: unhandled mode '$SELECTED_MODE'" ;;

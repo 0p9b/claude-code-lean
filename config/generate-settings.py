@@ -14,6 +14,7 @@ CORE_TOOLS = ["Bash", "Read", "Write", "Edit", "WebSearch", "WebFetch"]
 
 TOOL_PACKS: dict[str, list[str]] = {
     "search": ["Glob", "Grep"],
+    "todos": ["TodoWrite"],
     "tasks": [
         "TodoWrite",
         "TaskCreate",

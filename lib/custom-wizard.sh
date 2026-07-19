@@ -150,7 +150,8 @@ run_custom_wizard() {
   ui ""
 
   wizard_add_pack_if_yes "search" "Enable code search tools?" "Glob + Grep — find files and symbols"
-  wizard_add_pack_if_yes "tasks" "Enable task tracking?" "TodoWrite + Task* tools"
+  wizard_add_pack_if_yes "todos" "Enable TodoWrite?" "Simple checklist only (no Task* suite)"
+  wizard_add_pack_if_yes "tasks" "Enable full task suite?" "TodoWrite + TaskCreate/Get/List/…"
   wizard_add_pack_if_yes "agents" "Enable agents & plan mode?" "Agent, EnterPlanMode, worktrees"
   wizard_add_pack_if_yes "skills" "Enable skills?" "Skill tool + bundled skills"
   wizard_add_pack_if_yes "mcp" "Enable MCP connectors?" "mcp__* and MCP resource tools"

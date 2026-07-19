@@ -3,16 +3,17 @@
 **Website:** https://0p9b.github.io/claude-code-lean/  
 **Config breakdown:** https://0p9b.github.io/claude-code-lean/config.html
 
-Cut Claude Code CLI startup context. Keep six tools. Pick your system prompt — or use **Custom** to configure via wizard.
+Cut Claude Code CLI startup context. Start lean, then step up only as far as you need.
 
 ## Profiles
 
-| Profile | Stripped? | System prompt | Run |
-|---------|-----------|---------------|-----|
-| **Ultra** | Most (~4.5–5k) | Custom minimal | `claude-lean` |
-| **Regular** | Lean (~6.5k) | Claude Code default | `claude` |
-| **Both** | Pick per session | Either | both commands |
-| **Custom** | You choose | Wizard | your picks |
+| Profile | Tools | System prompt | Thinking | Run |
+|---------|-------|---------------|----------|-----|
+| **Ultra** | 6 core | Custom minimal | Off | `claude-lean` |
+| **Regular** | 6 core | Claude Code default | Off | `claude` |
+| **Balanced** | 6 + Glob/Grep/TodoWrite | Claude Code default | **On** | `claude` |
+| **Both** | 6 core | Ultra *or* Regular | Off | either command |
+| **Custom** | You choose | Wizard | Optional | your picks |
 
 Full disabled-state breakdown: [docs/CONFIG.md](docs/CONFIG.md) · [config.html](https://0p9b.github.io/claude-code-lean/config.html)
 
@@ -22,7 +23,7 @@ Full disabled-state breakdown: [docs/CONFIG.md](docs/CONFIG.md) · [config.html]
 curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash
 ```
 
-1. Interactive menu (↑↓ or `1`–`4` / `q`)
+1. Interactive menu (↑↓ or `1`–`5` / `q`)
 2. Confirm screen (Yes / No)
 3. Installs and backs up any existing `~/.claude/settings.json`
 
@@ -30,17 +31,18 @@ curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.
 |--------|----------------|
 | **1 — Ultra** | settings + `claude-lean` (most stripped) |
 | **2 — Regular** | settings only → run `claude` |
-| **3 — Both** | settings + `claude-lean` (recommended) |
-| **4 — Custom** | wizard: launcher, effort, optional tool packs |
+| **3 — Balanced** | practical tools + thinking → run `claude` |
+| **4 — Both** | Ultra + Regular launchers (lean 6 tools) |
+| **5 — Custom** | wizard: launcher, effort, optional packs |
 
 Skip the menu:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | CLAUDE_LEAN_MODE=both bash
-# ultra | regular   (custom requires interactive option 4)
+curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | CLAUDE_LEAN_MODE=balanced bash
+# ultra | regular | balanced | both   (custom requires interactive option 5)
 ```
 
-Look for `Installer version: 2026-07-19-12`. If it’s old/missing:
+Look for `Installer version: 2026-07-19-13`. If it’s old/missing:
 
 ```bash
 git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-code-lean && bash /tmp/claude-code-lean/install.sh
@@ -50,7 +52,7 @@ git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-cod
 
 ```bash
 claude-lean   # Ultra (or Custom with ultra/both)
-claude        # Regular Lean
+claude        # Regular or Balanced
 ```
 
 Then `/context` to verify. If `claude-lean` isn’t found:
@@ -59,11 +61,14 @@ Then `/context` to verify. If `claude-lean` isn’t found:
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## What you get (lean defaults)
+## What you get
 
-**Enabled:** `Bash` · `Read` · `Write` · `Edit` · `WebSearch` · `WebFetch`
+**Lean base (Ultra / Regular / Both):**  
+`Bash` · `Read` · `Write` · `Edit` · `WebSearch` · `WebFetch`
 
-**Disabled:** MCP, skills, workflows, agents, Glob, Grep, tasks, LSP, auto memory, hooks, etc.
+**Balanced adds:** `Glob` · `Grep` · `TodoWrite` · thinking on
+
+**Still disabled in Balanced:** MCP, Agent, skills, Task*, LSP, memory, hooks, CLAUDE.md, git instructions, etc.
 
 **Defaults:** effort `medium`, OAuth login still works (no `--bare`)
 

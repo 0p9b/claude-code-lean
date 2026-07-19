@@ -40,26 +40,30 @@
 
       <h2>Profile comparison</h2>
       <table>
-        <thead><tr><th>Profile</th><th>System prompt</th><th>Context</th><th>Command</th></tr></thead>
+        <thead><tr><th>Profile</th><th>Tools</th><th>System prompt</th><th>Thinking</th><th>Command</th></tr></thead>
         <tbody>
-          <tr><td><strong>Ultra</strong></td><td>Custom minimal (<code>.</code>)</td><td>~4.5–5k</td><td><code>claude-lean</code></td></tr>
-          <tr><td><strong>Regular</strong></td><td>Claude Code default lean</td><td>~6.5k</td><td><code>claude</code></td></tr>
-          <tr><td><strong>Both</strong></td><td>Pick per session</td><td>Either</td><td>Both</td></tr>
-          <tr><td><strong>Custom</strong></td><td>You choose</td><td>Varies</td><td>Wizard</td></tr>
+          <tr><td><strong>Ultra</strong></td><td>6 core</td><td>Custom minimal (<code>.</code>)</td><td>Off</td><td><code>claude-lean</code></td></tr>
+          <tr><td><strong>Regular</strong></td><td>6 core</td><td>Claude Code default lean</td><td>Off</td><td><code>claude</code></td></tr>
+          <tr><td><strong>Balanced</strong></td><td>6 + Glob/Grep/TodoWrite</td><td>Claude Code default lean</td><td><strong>On</strong></td><td><code>claude</code></td></tr>
+          <tr><td><strong>Both</strong></td><td>6 core</td><td>Pick Ultra or Regular</td><td>Off</td><td>Both</td></tr>
+          <tr><td><strong>Custom</strong></td><td>You choose</td><td>Wizard</td><td>Optional</td><td>Wizard</td></tr>
         </tbody>
       </table>
-      <p><strong>Ultra is the most stripped-down at launch.</strong> Regular still uses full lean <code>settings.json</code> — the ~1.8k gap is mostly the product system prompt.</p>
+      <p><strong>Ultra is the most stripped-down.</strong> <strong>Balanced</strong> sits between Regular and Custom — still major savings, plus code search, todos, and thinking.</p>
 
       <h2>Always enabled (lean base)</h2>
       <p>Six tools: <code>Bash</code> · <code>Read</code> · <code>Write</code> · <code>Edit</code> · <code>WebSearch</code> · <code>WebFetch</code></p>
       <p>Defaults: <code>effortLevel: medium</code>, <code>outputStyle: lean</code>, OAuth kept (no <code>--bare</code>).</p>
 
-      <h2>Disabled by default</h2>
+      <h2>Balanced extras</h2>
+      <p>Also enables: <code>Glob</code> · <code>Grep</code> · <code>TodoWrite</code> · thinking UI on. Still blocks MCP, Agent, skills, Task*, LSP, memory, hooks, CLAUDE.md, etc.</p>
+
+      <h2>Disabled by default (lean base)</h2>
       <h3>Environment flags</h3>
       <p>All set to off: auto memory, org memory, CLAUDE.md injection, skills, agents, advisor, attachments, git instructions, cron, background tasks, thinking.</p>
 
       <h3>Feature toggles</h3>
-      <p>Hooks, bundled skills, workflows, remote control, connectors, artifact view, agent view, auto memory, thinking summaries — all off.</p>
+      <p>Hooks, bundled skills, workflows, remote control, connectors, artifact view, agent view, auto memory, thinking summaries — all off (Balanced turns thinking on).</p>
 
       <h3>Denied tools</h3>
       <p>Everything except the six core tools, including: <code>Glob</code>, <code>Grep</code>, <code>Agent</code>, <code>Skill</code>, <code>TodoWrite</code>, <code>Task*</code>, <code>mcp__*</code>, plan/worktree modes, LSP, and more.</p>
@@ -69,6 +73,7 @@
         <thead><tr><th>Pack</th><th>Enables</th></tr></thead>
         <tbody>
           <tr><td>search</td><td>Glob, Grep</td></tr>
+          <tr><td>todos</td><td>TodoWrite</td></tr>
           <tr><td>tasks</td><td>TodoWrite, Task*</td></tr>
           <tr><td>agents</td><td>Agent, plan/worktree modes</td></tr>
           <tr><td>skills</td><td>Skill, bundled skills</td></tr>

@@ -62,8 +62,8 @@
 
     <section class="section" id="options">
       <div class="container">
-        <h2>Four ways to install</h2>
-        <p class="section-lead">Ultra is the most stripped down. Regular keeps the default prompt. Custom lets you add tool packs via a wizard.</p>
+        <h2>Five ways to install</h2>
+        <p class="section-lead">Ultra is the most stripped down. Regular keeps the default prompt. Balanced adds search + todos + thinking. Custom lets you pick packs.</p>
 
         <div class="cards">
           <article class="card">
@@ -83,16 +83,24 @@
           </article>
 
           <article class="card card-featured">
-            <span class="badge">Recommended</span>
+            <span class="badge">Practical</span>
             <span class="card-num">3</span>
-            <h3>Both</h3>
-            <p class="card-stat">Pick per session</p>
-            <p>Install both launchers. Same lean settings either way.</p>
-            <p class="card-run">Run either command</p>
+            <h3>Balanced</h3>
+            <p class="card-stat">~7–9k · +search + thinking</p>
+            <p>Default prompt + Glob/Grep/TodoWrite + thinking. Still blocks MCP, Agent, skills, etc.</p>
+            <p class="card-run">Run: <code>claude</code></p>
           </article>
 
           <article class="card">
             <span class="card-num">4</span>
+            <h3>Both</h3>
+            <p class="card-stat">Pick per session</p>
+            <p>Install Ultra + Regular launchers. Same lean 6-tool settings either way.</p>
+            <p class="card-run">Run either command</p>
+          </article>
+
+          <article class="card">
+            <span class="card-num">5</span>
             <h3>Custom</h3>
             <p class="card-stat">Wizard-driven</p>
             <p>Interactive TUI: choose launcher, effort, and optional tool packs (Glob, Agent, MCP, …).</p>
@@ -102,7 +110,7 @@
 
         <div class="code-block secondary-cmd">
           <p class="code-label">Skip the menu (non-interactive)</p>
-          <code>curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | CLAUDE_LEAN_MODE=both bash</code>
+          <code>curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | CLAUDE_LEAN_MODE=balanced bash</code>
         </div>
       </div>
     </section>

@@ -66,8 +66,13 @@ run_install_mode() {
 run_install_tty() {
   local keys="$1"
   local log="${TEST_HOME}/install.log"
+  : >"$log"
   printf '%s' "$keys" | script -q -c "cd '${REPO_ROOT}' && bash install.sh" "$log" >/dev/null 2>&1 || true
-  cat "$log"
+  if [[ -f "$log" ]]; then
+    cat "$log"
+  else
+    printf ''
+  fi
 }
 
 section() { printf '\n=== %s ===\n' "$1"; }
@@ -83,9 +88,12 @@ assert_executable "${REPO_ROOT}/config/generate-settings.py" "generate-settings.
 assert_file "${REPO_ROOT}/lib/custom-wizard.sh" "custom-wizard.sh present"
 assert_file "${REPO_ROOT}/docs/index.html" "GitHub Pages index.html present"
 assert_file "${REPO_ROOT}/docs/config.html" "GitHub Pages config.html present"
-assert_contains "$(cat "${REPO_ROOT}/docs/index.html")" "Four ways to install" "website lists four install modes"
-assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-12"' "installer version 2026-07-19-12"
+assert_contains "$(cat "${REPO_ROOT}/docs/index.html")" "Five ways to install" "website lists five install modes"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-13"' "installer version 2026-07-19-13"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'balanced) install_balanced' "balanced install mode present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'custom) install_custom' "custom install mode present"
+assert_file "${REPO_ROOT}/config/settings-balanced.json" "settings-balanced.json present"
+python3 -m json.tool "${REPO_ROOT}/config/settings-balanced.json" >/dev/null 2>&1 && pass "settings-balanced.json valid JSON" || fail "settings-balanced.json valid JSON"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'atomic_install_file' "atomic install helper present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'validate_mode_or_exit' "mode validation present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'generate-settings.py' "installer downloads settings generator"
@@ -105,7 +113,7 @@ assert_no_file "${REPO_ROOT}/generated/settings.json" "repo has no generated/set
 
 section "Generator: all packs stress"
 GEN_DIR="$(mktemp -d)"
-ALL_PACKS="search,tasks,agents,skills,mcp,memory,claude_md,thinking,git,cron,comms,extra"
+ALL_PACKS="search,todos,tasks,agents,skills,mcp,memory,claude_md,thinking,git,cron,comms,extra"
 python3 "${REPO_ROOT}/config/generate-settings.py" \
   --base "${REPO_ROOT}/config/settings.json" \
   --out-settings "${GEN_DIR}/settings.json" \
@@ -211,6 +219,27 @@ setup_test_home; trap teardown_test_home EXIT
 run_install_mode regular
 assert_file "${HOME}/.claude/settings.json" "regular: settings.json"
 assert_no_file "${HOME}/.local/bin/claude-lean" "regular: no launcher"
+teardown_test_home; trap - EXIT
+
+section "Install mode: balanced"
+setup_test_home; trap teardown_test_home EXIT
+run_install_mode balanced
+assert_file "${HOME}/.claude/settings.json" "balanced: settings.json"
+assert_no_file "${HOME}/.local/bin/claude-lean" "balanced: no launcher"
+if python3 -c "
+import json
+s=json.load(open('${HOME}/.claude/settings.json'))
+deny=set(s['permissions']['deny'])
+assert 'Glob' not in deny and 'Grep' not in deny and 'TodoWrite' not in deny
+assert 'Agent' in deny and 'mcp__*' in deny
+assert 'CLAUDE_CODE_DISABLE_THINKING' not in s.get('env', {})
+assert s.get('alwaysThinkingEnabled') is True
+assert s.get('showThinkingSummaries') is True
+"; then
+  pass "balanced: Glob/Grep/TodoWrite + thinking on"
+else
+  fail "balanced: Glob/Grep/TodoWrite + thinking on"
+fi
 teardown_test_home; trap - EXIT
 
 section "Install mode: both"
@@ -367,17 +396,25 @@ else
 fi
 rm -rf "$NO_CLAUDE_BIN"
 
-section "TTY: both (3 + y)"
+section "TTY: both (4 + y)"
 setup_test_home; trap teardown_test_home EXIT
-OUT="$(run_install_tty '3y')"
+OUT="$(run_install_tty '4y')"
 assert_file "${HOME}/.local/bin/claude-lean" "TTY both installs"
 assert_contains "$OUT" "Confirm" "TTY both shows confirm"
 assert_contains "$OUT" "Installed to:" "TTY both shows install summary"
 teardown_test_home; trap - EXIT
 
-section "TTY: reject then ultra (3n1y)"
+section "TTY: balanced (3 + y)"
 setup_test_home; trap teardown_test_home EXIT
-OUT="$(run_install_tty '3n1y')"
+OUT="$(run_install_tty '3y')"
+assert_file "${HOME}/.claude/settings.json" "TTY balanced installs settings"
+assert_no_file "${HOME}/.local/bin/claude-lean" "TTY balanced skips launcher"
+assert_contains "$OUT" "Installed: Balanced" "TTY balanced success message"
+teardown_test_home; trap - EXIT
+
+section "TTY: reject then ultra (4n1y)"
+setup_test_home; trap teardown_test_home EXIT
+OUT="$(run_install_tty '4n1y')"
 assert_contains "$OUT" "Back to menu" "TTY reject returns to menu"
 assert_contains "$OUT" "Installed: Ultra Lean only" "TTY then installs ultra"
 teardown_test_home; trap - EXIT
@@ -390,7 +427,7 @@ teardown_test_home; trap - EXIT
 
 section "TTY: arrows + both"
 setup_test_home; trap teardown_test_home EXIT
-OUT="$(run_install_tty $'\e[B\e[B\ry')"
+OUT="$(run_install_tty $'\e[B\e[B\e[B\ry')"
 assert_file "${HOME}/.local/bin/claude-lean" "TTY arrows install both"
 teardown_test_home; trap - EXIT
 
@@ -401,17 +438,17 @@ assert_file "${HOME}/.claude/settings.json" "TTY regular installs settings"
 assert_no_file "${HOME}/.local/bin/claude-lean" "TTY regular skips launcher"
 teardown_test_home; trap - EXIT
 
-section "TTY: confirm No via arrow (3↓Enter 3y)"
+section "TTY: confirm No via arrow (4↓Enter 4y)"
 setup_test_home; trap teardown_test_home EXIT
-OUT="$(run_install_tty $'3\e[B\r3y')"
+OUT="$(run_install_tty $'4\e[B\r4y')"
 assert_contains "$OUT" "Back to menu" "TTY confirm-no returns"
 assert_file "${HOME}/.local/bin/claude-lean" "TTY confirm-no then yes installs"
 teardown_test_home; trap - EXIT
 
-section "TTY: custom lean regular (4y + wizard)"
+section "TTY: custom lean regular (5y + wizard)"
 setup_test_home; trap teardown_test_home EXIT
-# Main: 4=custom, y=confirm | Wizard: 2=regular launcher, 2=medium effort | 13x n=no packs | y=confirm
-OUT="$(run_install_tty '4y22nnnnnnnnnnnnny')"
+# Main: 5=custom, y=confirm | Wizard: 2=regular launcher, 2=medium effort | 14x n=no packs | y=confirm
+OUT="$(run_install_tty '5y22nnnnnnnnnnnnnny')"
 assert_file "${HOME}/.claude/settings.json" "TTY custom: settings installed"
 assert_no_file "${HOME}/.local/bin/claude-lean" "TTY custom regular: no launcher"
 assert_contains "$OUT" "Custom configuration wizard" "TTY custom: wizard shown"
@@ -420,8 +457,8 @@ teardown_test_home; trap - EXIT
 
 section "TTY: custom ultra with search pack"
 setup_test_home; trap teardown_test_home EXIT
-# 4y | 1=ultra 2=medium | y=search yes | 12x n | y confirm
-OUT="$(run_install_tty '4y12ynnnnnnnnnnnny')"
+# 5y | 1=ultra 2=medium | y=search yes | 13x n | y confirm
+OUT="$(run_install_tty '5y12ynnnnnnnnnnnnny')"
 assert_file "${HOME}/.local/bin/claude-lean" "TTY custom ultra: launcher installed"
 assert_file "${HOME}/.claude/claude-lean.conf" "TTY custom ultra: conf written"
 if python3 -c "import json; assert 'Glob' not in json.load(open('${HOME}/.claude/settings.json'))['permissions']['deny']"; then
@@ -437,6 +474,7 @@ setup_test_home; trap teardown_test_home EXIT
 for _ in 1 2 3 4 5; do
   CLAUDE_LEAN_MODE=ultra bash "${REPO_ROOT}/install.sh" >/dev/null
   CLAUDE_LEAN_MODE=regular bash "${REPO_ROOT}/install.sh" >/dev/null
+  CLAUDE_LEAN_MODE=balanced bash "${REPO_ROOT}/install.sh" >/dev/null
   CLAUDE_LEAN_MODE=both bash "${REPO_ROOT}/install.sh" >/dev/null
 done
 assert_file "${HOME}/.local/bin/claude-lean" "stress cycle: final both state ok"
@@ -457,7 +495,7 @@ teardown_test_home; trap - EXIT
 section "Non-interactive pipe"
 setup_test_home; trap teardown_test_home EXIT
 OUT="$(CLAUDE_LEAN_MODE=regular bash "${REPO_ROOT}/install.sh" 2>&1)"
-assert_contains "$OUT" "Installer version: 2026-07-19-12" "non-interactive version"
+assert_contains "$OUT" "Installer version: 2026-07-19-13" "non-interactive version"
 assert_file "${HOME}/.claude/settings.json" "non-interactive installs"
 teardown_test_home; trap - EXIT
 
@@ -480,7 +518,7 @@ if [[ -n "$ORIGIN_INSTALL" ]]; then
 else
   skip "origin install.sh unavailable"
 fi
-for asset in config/settings.json config/generate-settings.py bin/claude-lean lib/custom-wizard.sh templates/system-prompt-lean.txt templates/output-styles/lean.md docs/index.html docs/config.html; do
+for asset in config/settings.json config/settings-balanced.json config/generate-settings.py bin/claude-lean lib/custom-wizard.sh templates/system-prompt-lean.txt templates/output-styles/lean.md docs/index.html docs/config.html; do
   LH="$(sha256sum "${REPO_ROOT}/${asset}" | awk '{print $1}')"
   OH="$(git -C "${REPO_ROOT}" show "origin/main:${asset}" 2>/dev/null | sha256sum | awk '{print $1}' || true)"
   if [[ -n "$OH" && "$LH" == "$OH" ]]; then
@@ -500,6 +538,7 @@ if [[ -z "$REMOTE_INSTALL" ]]; then
 elif [[ "$REMOTE_INSTALL" == *"$LOCAL_VER"* ]]; then
   pass "live raw install.sh version matches ($LOCAL_VER)"
   assert_contains "$REMOTE_INSTALL" "install_custom" "live install.sh has custom mode"
+  assert_contains "$REMOTE_INSTALL" "install_balanced" "live install.sh has balanced mode"
   assert_contains "$REMOTE_INSTALL" "generate-settings.py" "live install.sh downloads generator"
   assert_contains "$REMOTE_INSTALL" "config.html" "live install.sh links config.html"
   if [[ "$REMOTE_INSTALL" == *"CONFIG.html"* ]]; then
