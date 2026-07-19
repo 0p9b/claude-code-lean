@@ -12,7 +12,7 @@ BIN_DIR="${HOME}/.local/bin"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-8"
+INSTALLER_VERSION="2026-07-19-9"
 
 TUI_IN="/dev/tty"
 TUI_OUT="/dev/tty"
@@ -25,15 +25,15 @@ tui_available() {
 
 # UI must go to the real terminal when piped from curl (stdout may be captured).
 ui() {
-  if tui_available && printf '%s\n' "$*" >"$TUI_OUT" 2>/dev/null; then
-    return 0
+  if tui_available; then
+    { printf '%s\n' "$*" >"$TUI_OUT"; } 2>/dev/null && return 0
   fi
   printf '%s\n' "$*" >&2
 }
 
 ui_n() {
-  if tui_available && printf '%s' "$*" >"$TUI_OUT" 2>/dev/null; then
-    return 0
+  if tui_available; then
+    { printf '%s' "$*" >"$TUI_OUT"; } 2>/dev/null && return 0
   fi
   printf '%s' "$*" >&2
 }

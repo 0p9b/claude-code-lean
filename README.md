@@ -34,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.
 # or: ultra | regular
 ```
 
-Look for `Installer version: 2026-07-19-8` at the start. If it’s missing/old:
+Look for `Installer version: 2026-07-19-9` at the start. If it’s missing/old:
 
 ```bash
 git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-code-lean && bash /tmp/claude-code-lean/install.sh
