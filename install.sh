@@ -12,7 +12,7 @@ BIN_DIR="${HOME}/.local/bin"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-6"
+INSTALLER_VERSION="2026-07-19-7"
 
 TUI_IN="/dev/tty"
 TUI_OUT="/dev/tty"
@@ -59,7 +59,31 @@ prompt_read() {
   printf '%s\n' "$_reply"
 }
 
-# Interactive menu: arrow keys + Enter, or press 1-3 / q to pick immediately.
+# Ask y/N before proceeding. Returns 0 for yes, 1 for no.
+confirm_selection() {
+  local mode="$1"
+  local label="$2"
+  local reply=""
+
+  ui ""
+  case "$mode" in
+    quit)
+      ui_n "Quit without installing? [y/N] "
+      ;;
+    *)
+      ui "Selected: ${label}"
+      ui_n "Continue with this install? [y/N] "
+      ;;
+  esac
+
+  reply="$(prompt_read)"
+  case "$reply" in
+    y | Y | yes | Yes | YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Interactive menu: ↑↓ or 1-3/q to highlight, Enter to confirm (with y/N prompt).
 # Prints the chosen index (0-based) to stdout.
 menu_select() {
   local -a options=("$@")
@@ -81,7 +105,7 @@ menu_select() {
       fi
     done
     printf '\n\033[K' >"$TUI_OUT"
-    printf '  \033[2m↑↓ move · Enter confirm · 1-3 or q to pick\033[0m\033[K\n' >"$TUI_OUT"
+    printf '  \033[2m↑↓ or 1-3/q to choose · Enter to confirm\033[0m\033[K\n' >"$TUI_OUT"
   }
 
   redraw_menu() {
@@ -89,42 +113,56 @@ menu_select() {
     draw_menu
   }
 
-  draw_menu
-  tui_hide_cursor
-
   while true; do
-    IFS= read -rsn1 key <"$TUI_IN" || break
+    draw_menu
+    tui_hide_cursor
 
-    case "$key" in
-      $'\e')
-        IFS= read -rsn2 -t 0.1 seq <"$TUI_IN" 2>/dev/null || true
-        case "$seq" in
-          '[A' | '[B' | 'OA' | 'OB')
-            if [[ "$seq" == '[A' || "$seq" == 'OA' ]]; then
-              ((selected > 0)) && ((selected--))
-            else
-              ((selected < count - 1)) && ((selected++))
-            fi
-            redraw_menu
-            ;;
-        esac
-        ;;
-      '' | $'\n' | $'\r')
-        tui_show_cursor
-        printf '%s\n' "$selected"
-        return 0
-        ;;
-      [1-3])
-        tui_show_cursor
-        printf '%s\n' "$((key - 1))"
-        return 0
-        ;;
-      q | Q)
-        tui_show_cursor
-        printf '%s\n' "$((count - 1))"
-        return 0
-        ;;
-    esac
+    while true; do
+      IFS= read -rsn1 key <"$TUI_IN" || break
+
+      case "$key" in
+        $'\e')
+          IFS= read -rsn2 -t 0.1 seq <"$TUI_IN" 2>/dev/null || true
+          case "$seq" in
+            '[A' | '[B' | 'OA' | 'OB')
+              if [[ "$seq" == '[A' || "$seq" == 'OA' ]]; then
+                ((selected > 0)) && ((selected--))
+              else
+                ((selected < count - 1)) && ((selected++))
+              fi
+              redraw_menu
+              ;;
+          esac
+          ;;
+        '' | $'\n' | $'\r')
+          break 2
+          ;;
+        [1-3])
+          selected=$((key - 1))
+          redraw_menu
+          ;;
+        q | Q)
+          selected=$((count - 1))
+          redraw_menu
+          ;;
+      esac
+    done
+
+    tui_show_cursor
+
+    local mode="install"
+    if ((selected == count - 1)); then
+      mode="quit"
+    fi
+
+    if confirm_selection "$mode" "${options[selected]}"; then
+      printf '%s\n' "$selected"
+      return 0
+    fi
+
+    ui ""
+    ui "Cancelled — pick another option:"
+    ui ""
   done
 
   tui_show_cursor
@@ -280,25 +318,33 @@ choose_mode() {
       case "$choice" in
         1 | ultra | Ultra | ULTRA)
           idx=0
-          break
           ;;
         2 | regular | Regular | REGULAR)
           idx=1
-          break
           ;;
         3 | both | Both | BOTH)
           idx=2
-          break
           ;;
         q | Q | quit | Quit)
           idx=3
-          break
           ;;
         *)
           ui "Hmm, \"$choice\" is not valid."
           ui "Please type:  1 = Ultra  |  2 = Regular  |  3 = Both  |  q = Quit"
+          continue
           ;;
       esac
+
+      local mode="install"
+      if ((idx == 3)); then
+        mode="quit"
+      fi
+      if confirm_selection "$mode" "${menu_labels[idx]}"; then
+        break
+      fi
+      ui ""
+      ui "Cancelled — pick another option:"
+      ui ""
     done
   fi
 

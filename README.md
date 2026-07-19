@@ -8,7 +8,7 @@ Cut Claude Code CLI startup context. Keep six tools. Pick your system prompt.
 curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash
 ```
 
-You’ll see an interactive menu — use **↑↓** and **Enter**, or press **1**, **2**, **3**, or **q**.
+You’ll see an interactive menu — use **↑↓** or **1–3/q** to choose, **Enter** to confirm, then **y/N** before install.
 
 | Choice | Installs | After install, run |
 |---|---|---|
@@ -34,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.
 # or: ultra | regular
 ```
 
-Look for `Installer version: 2026-07-19-6` at the start. If it’s missing/old:
+Look for `Installer version: 2026-07-19-7` at the start. If it’s missing/old:
 
 ```bash
 git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-code-lean && bash /tmp/claude-code-lean/install.sh
