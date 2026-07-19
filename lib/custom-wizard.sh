@@ -8,6 +8,14 @@ CUSTOM_EFFORT="medium"
 CUSTOM_PACKS=()
 CUSTOM_GENERATED_SETTINGS=""
 CUSTOM_GENERATED_LAUNCHER_CONF=""
+CUSTOM_GEN_DIR=""
+
+cleanup_custom_gen() {
+  if [[ -n "${CUSTOM_GEN_DIR:-}" && -d "$CUSTOM_GEN_DIR" ]]; then
+    rm -rf "$CUSTOM_GEN_DIR"
+  fi
+  CUSTOM_GEN_DIR=""
+}
 
 wizard_yesno() {
   local heading="$1"
@@ -160,10 +168,14 @@ run_custom_wizard() {
     packs_csv=$(IFS=,; echo "${CUSTOM_PACKS[*]}")
   fi
 
+  # Always write into a temp dir — never pollute a local clone of the repo.
+  cleanup_custom_gen
+  CUSTOM_GEN_DIR="$(mktemp -d "${TMPDIR:-/tmp}/claude-code-lean-gen.XXXXXX")"
+
   local gen_args=(
     python3 "${WORKDIR}/config/generate-settings.py"
     --base "${WORKDIR}/config/settings.json"
-    --out-settings "${WORKDIR}/generated/settings.json"
+    --out-settings "${CUSTOM_GEN_DIR}/settings.json"
     --effort "$CUSTOM_EFFORT"
     --packs "$packs_csv"
   )
@@ -177,14 +189,13 @@ run_custom_wizard() {
   ((use_thinking)) && gen_args+=(--thinking-ui)
 
   if [[ "$CUSTOM_LAUNCHER" == "ultra" || "$CUSTOM_LAUNCHER" == "both" ]]; then
-    gen_args+=(--launcher --out-launcher "${WORKDIR}/generated/claude-lean.conf")
+    gen_args+=(--launcher --out-launcher "${CUSTOM_GEN_DIR}/claude-lean.conf")
   fi
 
-  mkdir -p "${WORKDIR}/generated"
   "${gen_args[@]}"
 
-  CUSTOM_GENERATED_SETTINGS="${WORKDIR}/generated/settings.json"
-  CUSTOM_GENERATED_LAUNCHER_CONF="${WORKDIR}/generated/claude-lean.conf"
+  CUSTOM_GENERATED_SETTINGS="${CUSTOM_GEN_DIR}/settings.json"
+  CUSTOM_GENERATED_LAUNCHER_CONF="${CUSTOM_GEN_DIR}/claude-lean.conf"
 
   ui ""
   ui "Configuration preview:"
@@ -199,6 +210,9 @@ run_custom_wizard() {
 
   if ! ask_to_confirm "install" "Custom lean configuration"; then
     ui "Custom configuration cancelled."
+    cleanup_custom_gen
+    CUSTOM_GENERATED_SETTINGS=""
+    CUSTOM_GENERATED_LAUNCHER_CONF=""
     return 1
   fi
   return 0

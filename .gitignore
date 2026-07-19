@@ -5,3 +5,10 @@
 *.pem
 *.key
 credentials*
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+generated/
+.claude-code-lean-gen.*/

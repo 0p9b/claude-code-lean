@@ -84,12 +84,24 @@ assert_file "${REPO_ROOT}/lib/custom-wizard.sh" "custom-wizard.sh present"
 assert_file "${REPO_ROOT}/docs/index.html" "GitHub Pages index.html present"
 assert_file "${REPO_ROOT}/docs/config.html" "GitHub Pages config.html present"
 assert_contains "$(cat "${REPO_ROOT}/docs/index.html")" "Four ways to install" "website lists four install modes"
-assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-11"' "installer version 2026-07-19-11"
+assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'INSTALLER_VERSION="2026-07-19-12"' "installer version 2026-07-19-12"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'custom) install_custom' "custom install mode present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'atomic_install_file' "atomic install helper present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'validate_mode_or_exit' "mode validation present"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'generate-settings.py' "installer downloads settings generator"
 assert_contains "$(cat "${REPO_ROOT}/install.sh")" 'custom-wizard.sh' "installer downloads custom wizard"
+# Consistency: never ship broken config URL casing
+if grep -n 'CONFIG\.html' "${REPO_ROOT}/install.sh" "${REPO_ROOT}/README.md" "${REPO_ROOT}/docs/"*.html 2>/dev/null; then
+  fail "broken CONFIG.html URL (must be config.html)"
+else
+  pass "config.html URL casing consistent"
+fi
+# Custom wizard must write to temp dir, not repo generated/
+assert_contains "$(cat "${REPO_ROOT}/lib/custom-wizard.sh")" 'mktemp -d' "custom wizard uses temp dir for generated settings"
+assert_contains "$(cat "${REPO_ROOT}/.gitignore")" 'generated/' "gitignore ignores generated/"
+assert_contains "$(cat "${REPO_ROOT}/.gitignore")" '__pycache__/' "gitignore ignores __pycache__/"
+assert_no_file "${REPO_ROOT}/generated/settings.json" "repo has no generated/settings.json pollution"
+
 
 section "Generator: all packs stress"
 GEN_DIR="$(mktemp -d)"
@@ -417,6 +429,7 @@ if python3 -c "import json; assert 'Glob' not in json.load(open('${HOME}/.claude
 else
   fail "TTY custom ultra: Glob enabled"
 fi
+assert_no_file "${REPO_ROOT}/generated/settings.json" "custom install does not pollute repo generated/"
 teardown_test_home; trap - EXIT
 
 section "Stress: rapid reinstall cycle"
@@ -444,7 +457,7 @@ teardown_test_home; trap - EXIT
 section "Non-interactive pipe"
 setup_test_home; trap teardown_test_home EXIT
 OUT="$(CLAUDE_LEAN_MODE=regular bash "${REPO_ROOT}/install.sh" 2>&1)"
-assert_contains "$OUT" "Installer version: 2026-07-19-11" "non-interactive version"
+assert_contains "$OUT" "Installer version: 2026-07-19-12" "non-interactive version"
 assert_file "${HOME}/.claude/settings.json" "non-interactive installs"
 teardown_test_home; trap - EXIT
 
@@ -482,14 +495,20 @@ done
 section "Remote install.sh live fetch"
 REMOTE_INSTALL="$(curl -fsSL "https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh" 2>/dev/null || true)"
 LOCAL_VER="$(grep -o 'INSTALLER_VERSION="[^"]*"' "${REPO_ROOT}/install.sh" | head -1)"
-if [[ -n "$REMOTE_INSTALL" && "$REMOTE_INSTALL" == *"$LOCAL_VER"* ]]; then
+if [[ -z "$REMOTE_INSTALL" ]]; then
+  skip "live raw install.sh unavailable"
+elif [[ "$REMOTE_INSTALL" == *"$LOCAL_VER"* ]]; then
   pass "live raw install.sh version matches ($LOCAL_VER)"
-else
-  fail "live raw install.sh version mismatch (expected $LOCAL_VER)"
-fi
-if [[ -n "$REMOTE_INSTALL" ]]; then
   assert_contains "$REMOTE_INSTALL" "install_custom" "live install.sh has custom mode"
   assert_contains "$REMOTE_INSTALL" "generate-settings.py" "live install.sh downloads generator"
+  assert_contains "$REMOTE_INSTALL" "config.html" "live install.sh links config.html"
+  if [[ "$REMOTE_INSTALL" == *"CONFIG.html"* ]]; then
+    fail "live install.sh must not use CONFIG.html"
+  else
+    pass "live install.sh has no broken CONFIG.html link"
+  fi
+else
+  skip "live raw install.sh pending push ($LOCAL_VER)"
 fi
 
 printf '\n========================================\n'

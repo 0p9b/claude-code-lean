@@ -12,7 +12,7 @@ BIN_DIR="${CLAUDE_LEAN_BIN_DIR:-${HOME}/.local/bin}"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-11"
+INSTALLER_VERSION="2026-07-19-12"
 VALID_MODES=(ultra regular both custom)
 
 TUI_IN="/dev/tty"
@@ -273,6 +273,9 @@ cleanup() {
   if [[ "$CLEANUP_WORKDIR" -eq 1 && -n "$WORKDIR" && -d "$WORKDIR" ]]; then
     rm -rf "$WORKDIR"
   fi
+  if declare -F cleanup_custom_gen >/dev/null 2>&1; then
+    cleanup_custom_gen
+  fi
 }
 trap cleanup EXIT
 
@@ -436,6 +439,7 @@ install_custom() {
       :
       ;;
     *)
+      cleanup_custom_gen
       err "Unknown custom launcher: $CUSTOM_LAUNCHER"
       ;;
   esac
@@ -456,6 +460,7 @@ install_custom() {
   esac
   say "  Full breakdown: https://0p9b.github.io/claude-code-lean/config.html"
   print_install_summary
+  cleanup_custom_gen
 }
 
 install_regular() {
@@ -513,8 +518,8 @@ choose_mode() {
 
   if [[ -n "$choice" ]]; then
     SELECTED_MODE="$(validate_mode_or_exit "$choice")"
-    if [[ "$SELECTED_MODE" == "custom" && -z "${CLAUDE_LEAN_CUSTOM_PACKS:-}" ]]; then
-      err "Custom mode requires the interactive installer. Run without CLAUDE_LEAN_MODE or set packs via wizard."
+    if [[ "$SELECTED_MODE" == "custom" ]]; then
+      err "Custom mode requires the interactive menu. Re-run without CLAUDE_LEAN_MODE and pick option 4."
     fi
     return
   fi
@@ -526,7 +531,7 @@ choose_mode() {
   ui ""
   ui "Profiles: Ultra = minimal prompt · Regular = default prompt · Custom = you choose"
   ui "All lean profiles start with 6 tools; everything else disabled by default."
-  ui "Details: https://0p9b.github.io/claude-code-lean/CONFIG.html"
+  ui "Details: https://0p9b.github.io/claude-code-lean/config.html"
   ui ""
   ui "Choose what to install:"
   ui ""

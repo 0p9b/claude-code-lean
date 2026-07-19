@@ -14,7 +14,7 @@ Cut Claude Code CLI startup context. Keep six tools. Pick your system prompt —
 | **Both** | Pick per session | Either | both commands |
 | **Custom** | You choose | Wizard | your picks |
 
-See [docs/CONFIG.md](docs/CONFIG.md) for the full disabled-state breakdown.
+Full disabled-state breakdown: [docs/CONFIG.md](docs/CONFIG.md) · [config.html](https://0p9b.github.io/claude-code-lean/config.html)
 
 ## Install (one command)
 
@@ -22,23 +22,42 @@ See [docs/CONFIG.md](docs/CONFIG.md) for the full disabled-state breakdown.
 curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash
 ```
 
-Interactive menu → confirm screen → install. Option **4 — Custom** walks through launcher, effort, and optional tool packs.
+1. Interactive menu (↑↓ or `1`–`4` / `q`)
+2. Confirm screen (Yes / No)
+3. Installs and backs up any existing `~/.claude/settings.json`
 
 | Choice | What it does |
 |--------|----------------|
-| **1 — Ultra** | settings + `claude-lean` |
-| **2 — Regular** | settings only |
+| **1 — Ultra** | settings + `claude-lean` (most stripped) |
+| **2 — Regular** | settings only → run `claude` |
 | **3 — Both** | settings + `claude-lean` (recommended) |
-| **4 — Custom** | wizard: pick tools, effort, launcher |
+| **4 — Custom** | wizard: launcher, effort, optional tool packs |
 
 Skip the menu:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | CLAUDE_LEAN_MODE=both bash
-# ultra | regular (custom requires interactive wizard)
+# ultra | regular   (custom requires interactive option 4)
 ```
 
-Look for `Installer version: 2026-07-19-11`.
+Look for `Installer version: 2026-07-19-12`. If it’s old/missing:
+
+```bash
+git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-code-lean && bash /tmp/claude-code-lean/install.sh
+```
+
+## After install
+
+```bash
+claude-lean   # Ultra (or Custom with ultra/both)
+claude        # Regular Lean
+```
+
+Then `/context` to verify. If `claude-lean` isn’t found:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
 
 ## What you get (lean defaults)
 
