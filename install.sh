@@ -12,10 +12,12 @@ BIN_DIR="${HOME}/.local/bin"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-7"
+INSTALLER_VERSION="2026-07-19-8"
 
 TUI_IN="/dev/tty"
 TUI_OUT="/dev/tty"
+MENU_SELECTED_IDX=""
+PROMPT_REPLY=""
 
 tui_available() {
   [[ -r "$TUI_IN" && -w "$TUI_OUT" ]] 2>/dev/null
@@ -49,21 +51,111 @@ tui_show_cursor() {
 }
 
 # Read user input from the real terminal (curl | bash steals stdin).
+# Result is stored in PROMPT_REPLY (never stdout — avoids subshell capture bugs).
 prompt_read() {
-  local _reply=""
+  PROMPT_REPLY=""
   if [[ -r /dev/tty ]]; then
-    read -r _reply </dev/tty
+    read -r PROMPT_REPLY </dev/tty
   else
-    read -r _reply
+    read -r PROMPT_REPLY
   fi
-  printf '%s\n' "$_reply"
 }
 
-# Ask y/N before proceeding. Returns 0 for yes, 1 for no.
-confirm_selection() {
+# Draw a highlighted option list. Sets $1=menu_height for redraw.
+menu_draw_options() {
+  local selected="$1"
+  shift
+  local -a options=("$@")
+  local count=${#options[@]}
+  local i
+
+  MENU_DRAW_HEIGHT=$((count + 2))
+  for ((i = 0; i < count; i++)); do
+    if ((i == selected)); then
+      printf '  \033[7m› %s\033[0m\033[K\n' "${options[i]}" >"$TUI_OUT"
+    else
+      printf '    %s\033[K\n' "${options[i]}" >"$TUI_OUT"
+    fi
+  done
+  printf '\n\033[K' >"$TUI_OUT"
+}
+
+menu_redraw_options() {
+  local selected="$1"
+  shift
+  printf '\033[%dA' "$MENU_DRAW_HEIGHT" >"$TUI_OUT"
+  menu_draw_options "$selected" "$@"
+}
+
+# Yes/No confirmation menu. Returns 0 for yes, 1 for no.
+menu_confirm_yesno() {
+  local heading="$1"
+  local detail="${2:-}"
+  local -a options=("Yes, continue" "No, go back")
+  local selected=0
+  local key seq
+
+  if ! tui_available; then
+    return 1
+  fi
+
+  ui ""
+  ui "----------------------------------------"
+  ui "  Confirm"
+  ui "----------------------------------------"
+  ui ""
+  ui "$heading"
+  if [[ -n "$detail" ]]; then
+    ui "  ${detail}"
+  fi
+  ui ""
+
+  while true; do
+    menu_draw_options "$selected" "${options[@]}"
+    printf '  \033[2m↑↓ or y/n · Enter to select\033[0m\033[K\n' >"$TUI_OUT"
+    tui_hide_cursor
+
+    IFS= read -rsn1 key <"$TUI_IN" || break
+
+    case "$key" in
+      $'\e')
+        IFS= read -rsn2 -t 0.1 seq <"$TUI_IN" 2>/dev/null || true
+        case "$seq" in
+          '[A' | 'OA')
+            ((selected > 0)) && ((selected--))
+            menu_redraw_options "$selected" "${options[@]}"
+            printf '  \033[2m↑↓ or y/n · Enter to select\033[0m\033[K\n' >"$TUI_OUT"
+            ;;
+          '[B' | 'OB')
+            ((selected < 1)) && ((selected++))
+            menu_redraw_options "$selected" "${options[@]}"
+            printf '  \033[2m↑↓ or y/n · Enter to select\033[0m\033[K\n' >"$TUI_OUT"
+            ;;
+        esac
+        ;;
+      '' | $'\n' | $'\r')
+        tui_show_cursor
+        return "$selected"
+        ;;
+      y | Y)
+        tui_show_cursor
+        return 0
+        ;;
+      n | N)
+        tui_show_cursor
+        return 1
+        ;;
+    esac
+  done
+
+  tui_show_cursor
+  return 1
+}
+
+# Text fallback when no TUI confirm menu is available.
+confirm_selection_text() {
   local mode="$1"
   local label="$2"
-  local reply=""
 
   ui ""
   case "$mode" in
@@ -76,45 +168,48 @@ confirm_selection() {
       ;;
   esac
 
-  reply="$(prompt_read)"
-  case "$reply" in
+  prompt_read
+  case "$PROMPT_REPLY" in
     y | Y | yes | Yes | YES) return 0 ;;
     *) return 1 ;;
   esac
 }
 
-# Interactive menu: ↑↓ or 1-3/q to highlight, Enter to confirm (with y/N prompt).
-# Prints the chosen index (0-based) to stdout.
+ask_to_confirm() {
+  local mode="$1"
+  local label="$2"
+  local heading detail
+
+  if [[ "$mode" == "quit" ]]; then
+    heading="Quit without installing?"
+    detail=""
+  else
+    heading="Install this option?"
+    detail="$label"
+  fi
+
+  if tui_available; then
+    menu_confirm_yesno "$heading" "$detail"
+  else
+    confirm_selection_text "$mode" "$label"
+  fi
+}
+
+# Interactive menu: ↑↓ to move, 1-3/q to pick, Enter to open confirm menu.
+# Sets MENU_SELECTED_IDX and returns 0 on success.
 menu_select() {
   local -a options=("$@")
   local count=${#options[@]}
   local selected=0
-  local menu_height=$((count + 2))
-  local i key seq
+  local key seq
 
   if ! tui_available; then
     return 1
   fi
 
-  draw_menu() {
-    for ((i = 0; i < count; i++)); do
-      if ((i == selected)); then
-        printf '  \033[7m› %s\033[0m\033[K\n' "${options[i]}" >"$TUI_OUT"
-      else
-        printf '    %s\033[K\n' "${options[i]}" >"$TUI_OUT"
-      fi
-    done
-    printf '\n\033[K' >"$TUI_OUT"
-    printf '  \033[2m↑↓ or 1-3/q to choose · Enter to confirm\033[0m\033[K\n' >"$TUI_OUT"
-  }
-
-  redraw_menu() {
-    printf '\033[%dA' "$menu_height" >"$TUI_OUT"
-    draw_menu
-  }
-
   while true; do
-    draw_menu
+    menu_draw_options "$selected" "${options[@]}"
+    printf '  \033[2m↑↓ move · 1-3/q pick · Enter to confirm\033[0m\033[K\n' >"$TUI_OUT"
     tui_hide_cursor
 
     while true; do
@@ -130,20 +225,21 @@ menu_select() {
               else
                 ((selected < count - 1)) && ((selected++))
               fi
-              redraw_menu
+              menu_redraw_options "$selected" "${options[@]}"
+              printf '  \033[2m↑↓ move · 1-3/q pick · Enter to confirm\033[0m\033[K\n' >"$TUI_OUT"
               ;;
           esac
           ;;
         '' | $'\n' | $'\r')
-          break 2
+          break
           ;;
         [1-3])
           selected=$((key - 1))
-          redraw_menu
+          break
           ;;
         q | Q)
           selected=$((count - 1))
-          redraw_menu
+          break
           ;;
       esac
     done
@@ -155,13 +251,13 @@ menu_select() {
       mode="quit"
     fi
 
-    if confirm_selection "$mode" "${options[selected]}"; then
-      printf '%s\n' "$selected"
+    if ask_to_confirm "$mode" "${options[selected]}"; then
+      MENU_SELECTED_IDX="$selected"
       return 0
     fi
 
     ui ""
-    ui "Cancelled — pick another option:"
+    ui "Back to menu — pick another option:"
     ui ""
   done
 
@@ -309,12 +405,13 @@ choose_mode() {
   ui "Choose what to install:"
   ui ""
 
-  if tui_available && idx="$(menu_select "${menu_labels[@]}")"; then
-    :
+  if tui_available && menu_select "${menu_labels[@]}"; then
+    idx="$MENU_SELECTED_IDX"
   else
     while true; do
       ui_n "Type 1 (Ultra), 2 (Regular), 3 (Both), or q to quit: "
-      choice="$(prompt_read)"
+      prompt_read
+      choice="$PROMPT_REPLY"
       case "$choice" in
         1 | ultra | Ultra | ULTRA)
           idx=0
@@ -339,7 +436,7 @@ choose_mode() {
       if ((idx == 3)); then
         mode="quit"
       fi
-      if confirm_selection "$mode" "${menu_labels[idx]}"; then
+      if ask_to_confirm "$mode" "${menu_labels[idx]}"; then
         break
       fi
       ui ""
