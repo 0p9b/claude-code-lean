@@ -8,38 +8,35 @@ Cut Claude Code CLI startup context. Keep six tools. Pick your system prompt.
 curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | bash
 ```
 
-You should see a full menu like this (not just `1 / 2 / q`):
+You’ll see a menu:
 
-```text
-========================================
-  Claude Code Lean installer
-========================================
+| Choice | Installs | After install, run |
+|---|---|---|
+| **1 — Ultra Lean only** | settings + `claude-lean` | `claude-lean` (~4.5–5k) |
+| **2 — Regular Lean only** | settings only | `claude` (~6.5k) |
+| **3 — Both** (recommended) | settings + `claude-lean` | either command below |
 
-  1) Ultra Lean   → run claude-lean   (~4.5–5k context)
-  2) Regular Lean → run claude        (~6.5k context)
-  q) Quit
+### Option 3 — Both (matches a full local setup)
+
+Same lean settings either way. You choose when you launch:
+
+```bash
+claude-lean   # Ultra: custom minimal system prompt (~4.5–5k)
+claude        # Regular: default Claude Code system prompt (~6.5k)
 ```
 
-| Choice | What you get | After install, run |
-|---|---|---|
-| **1 — Ultra Lean** | Tiny custom system prompt | `claude-lean` |
-| **2 — Regular Lean** | Claude Code’s default lean system prompt | `claude` |
-
-Same six tools either way. Only the system prompt differs (~1.8k).
+Only the system prompt differs (~1.8k). Tools are identical.
 
 Skip the menu (optional):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | CLAUDE_LEAN_MODE=ultra bash
-# or
-curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | CLAUDE_LEAN_MODE=regular bash
+curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | CLAUDE_LEAN_MODE=both bash
+# or: ultra | regular
 ```
 
-If the menu looks wrong/outdated, force a fresh copy:
+Look for `Installer version: 2026-07-19-4` at the start. If it’s missing/old:
 
 ```bash
-curl -fsSL "https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh" | bash
-# or clone (always latest):
 git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-code-lean && bash /tmp/claude-code-lean/install.sh
 ```
 

@@ -11,7 +11,7 @@ BIN_DIR="${HOME}/.local/bin"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-3"
+INSTALLER_VERSION="2026-07-19-4"
 
 # UI must go to the real terminal when piped from curl (stdout may be captured).
 ui() {
@@ -105,11 +105,21 @@ install_shared() {
   cp "$WORKDIR/templates/output-styles/lean.md" "${CLAUDE_DIR}/output-styles/lean.md"
 }
 
+install_launcher() {
+  say "Installing claude-lean launcher…"
+  backup_if_exists "${CLAUDE_DIR}/system-prompt-lean.txt"
+  cp "$WORKDIR/templates/system-prompt-lean.txt" "${CLAUDE_DIR}/system-prompt-lean.txt"
+
+  cp "$WORKDIR/bin/claude-lean" "${BIN_DIR}/claude-lean"
+  chmod +x "${BIN_DIR}/claude-lean"
+  ensure_path_note
+}
+
 install_regular() {
   install_shared
   say
-  say "Installed: Regular Lean"
-  say "  • Same six tools (Bash, Read, Write, Edit, WebSearch, WebFetch)"
+  say "Installed: Regular Lean only"
+  say "  • Six tools (Bash, Read, Write, Edit, WebSearch, WebFetch)"
   say "  • Claude Code default lean system prompt"
   say "  • Effort: medium"
   say
@@ -118,24 +128,29 @@ install_regular() {
 
 install_ultra() {
   install_shared
-
-  say "Installing ultra-lean launcher…"
-  backup_if_exists "${CLAUDE_DIR}/system-prompt-lean.txt"
-  cp "$WORKDIR/templates/system-prompt-lean.txt" "${CLAUDE_DIR}/system-prompt-lean.txt"
-
-  cp "$WORKDIR/bin/claude-lean" "${BIN_DIR}/claude-lean"
-  chmod +x "${BIN_DIR}/claude-lean"
-
-  ensure_path_note
+  install_launcher
 
   say
-  say "Installed: Ultra Lean"
-  say "  • Same six tools (Bash, Read, Write, Edit, WebSearch, WebFetch)"
-  say "  • Minimal custom system prompt (replaces product prompt)"
+  say "Installed: Ultra Lean only"
+  say "  • Six tools (Bash, Read, Write, Edit, WebSearch, WebFetch)"
+  say "  • Minimal custom system prompt (overrides product prompt)"
   say "  • Effort: medium"
   say
   say "Start with:  claude-lean"
-  say "(Plain 'claude' still uses the default system prompt + the same settings.)"
+}
+
+install_both() {
+  install_shared
+  install_launcher
+
+  say
+  say "Installed: Both (recommended)"
+  say "  • Same lean settings + six tools for either command"
+  say "  • Effort: medium"
+  say
+  say "Use either launcher anytime:"
+  say "  claude-lean  → Ultra Lean (custom minimal system prompt, ~4.5–5k)"
+  say "  claude       → Regular Lean (default Claude Code system prompt, ~6.5k)"
 }
 
 choose_mode() {
@@ -155,42 +170,52 @@ choose_mode() {
   Claude Code Lean installer
 ========================================
 
-Both options install the SAME lean settings and these 6 tools:
+All options use the SAME lean settings and these 6 tools:
   Bash · Read · Write · Edit · WebSearch · WebFetch
 Everything else is disabled. Effort defaults to medium.
 
-Pick ONE — the only difference is the system prompt:
+Choose what to install:
 
-  1) Ultra Lean
-     What it is:  replaces Claude Code's built-in system prompt with a
-                  tiny custom prompt (lowest context)
-     Typical /context startup: ~4.5–5k tokens
+  1) Ultra Lean only
+     Installs settings + the claude-lean launcher.
+     System prompt: tiny custom override (lowest context, ~4.5–5k)
      After install, run:  claude-lean
 
-  2) Regular Lean
-     What it is:  keeps Claude Code's normal/default lean system prompt
-                  (same tools, ~1.8k more context than Ultra)
-     Typical /context startup: ~6.5k tokens
+  2) Regular Lean only
+     Installs settings only (no claude-lean command).
+     System prompt: Claude Code default lean prompt (~6.5k)
      After install, run:  claude
+
+  3) Both  (like a full local setup — recommended)
+     Installs settings + claude-lean.
+     Then YOU pick per session:
+       claude-lean  → Ultra Lean (custom system prompt)
+       claude       → Regular Lean (default system prompt)
 
   q) Quit without installing
 
 MENU
 
   while true; do
-    ui_n "Type 1 for Ultra Lean, 2 for Regular Lean, or q to quit: "
+    ui_n "Type 1 (Ultra), 2 (Regular), 3 (Both), or q to quit: "
     choice="$(prompt_read)"
     case "$choice" in
       1|ultra|Ultra|ULTRA)
         SELECTED_MODE="ultra"
         ui ""
-        ui "→ OK: installing Ultra Lean (you will use: claude-lean)"
+        ui "→ OK: installing Ultra Lean only (use: claude-lean)"
         return
         ;;
       2|regular|Regular|REGULAR)
         SELECTED_MODE="regular"
         ui ""
-        ui "→ OK: installing Regular Lean (you will use: claude)"
+        ui "→ OK: installing Regular Lean only (use: claude)"
+        return
+        ;;
+      3|both|Both|BOTH)
+        SELECTED_MODE="both"
+        ui ""
+        ui "→ OK: installing Both (use: claude-lean OR claude)"
         return
         ;;
       q|Q|quit|Quit)
@@ -199,7 +224,7 @@ MENU
         ;;
       *)
         ui "Hmm, \"$choice\" is not valid."
-        ui "Please type:  1  = Ultra Lean   |   2  = Regular Lean   |   q  = Quit"
+        ui "Please type:  1 = Ultra  |  2 = Regular  |  3 = Both  |  q = Quit"
         ;;
     esac
   done
@@ -221,6 +246,7 @@ main() {
   case "$SELECTED_MODE" in
     ultra) install_ultra ;;
     regular) install_regular ;;
+    both) install_both ;;
     *) err "Unknown mode: $SELECTED_MODE" ;;
   esac
 
