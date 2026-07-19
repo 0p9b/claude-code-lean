@@ -5,7 +5,7 @@ Cut Claude Code CLI startup context. Keep six tools. Pick your system prompt.
 ## Install (one command)
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash
 ```
 
 You’ll see a menu:
@@ -30,11 +30,11 @@ Only the system prompt differs (~1.8k). Tools are identical.
 Skip the menu (optional):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main/install.sh | CLAUDE_LEAN_MODE=both bash
+curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | CLAUDE_LEAN_MODE=both bash
 # or: ultra | regular
 ```
 
-Look for `Installer version: 2026-07-19-4` at the start. If it’s missing/old:
+Look for `Installer version: 2026-07-19-5` at the start. If it’s missing/old:
 
 ```bash
 git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-code-lean && bash /tmp/claude-code-lean/install.sh

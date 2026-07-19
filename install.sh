@@ -4,14 +4,15 @@
 #   curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash
 set -euo pipefail
 
-# Prefer jsDelivr — raw.githubusercontent.com often serves stale main for minutes.
-REPO_RAW="${CLAUDE_LEAN_RAW_BASE:-https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@main}"
+# Prefer GitHub raw — jsDelivr @main can stay stale for a long time after pushes.
+# Override if needed: CLAUDE_LEAN_RAW_BASE=https://cdn.jsdelivr.net/gh/0p9b/claude-code-lean@COMMIT
+REPO_RAW="${CLAUDE_LEAN_RAW_BASE:-https://raw.githubusercontent.com/0p9b/claude-code-lean/main}"
 CLAUDE_DIR="${HOME}/.claude"
 BIN_DIR="${HOME}/.local/bin"
 WORKDIR=""
 CLEANUP_WORKDIR=0
 SELECTED_MODE=""
-INSTALLER_VERSION="2026-07-19-4"
+INSTALLER_VERSION="2026-07-19-5"
 
 # UI must go to the real terminal when piped from curl (stdout may be captured).
 ui() {
