@@ -9,6 +9,24 @@ CLAUDE_DIR="${HOME}/.claude"
 BIN_DIR="${HOME}/.local/bin"
 WORKDIR=""
 CLEANUP_WORKDIR=0
+SELECTED_MODE=""
+
+# UI must go to the real terminal when piped from curl (stdout may be captured).
+ui() {
+  if [[ -w /dev/tty ]]; then
+    printf '%s\n' "$*" >/dev/tty
+  else
+    printf '%s\n' "$*" >&2
+  fi
+}
+
+ui_n() {
+  if [[ -w /dev/tty ]]; then
+    printf '%s' "$*" >/dev/tty
+  else
+    printf '%s' "$*" >&2
+  fi
+}
 
 # Read user input from the real terminal (curl | bash steals stdin).
 prompt_read() {
@@ -122,37 +140,58 @@ choose_mode() {
   local choice="${CLAUDE_LEAN_MODE:-}"
 
   if [[ -n "$choice" ]]; then
-    printf '%s\n' "$choice"
+    SELECTED_MODE="$choice"
     return
   fi
 
-  say
-  say "Claude Code Lean installer"
-  say "=========================="
-  say
-  say "Both options use the same lean settings and these 6 tools:"
-  say "  Bash · Read · Write · Edit · WebSearch · WebFetch"
-  say "Everything else is disabled/denied. Effort defaults to medium."
-  say
-  say "Choose a mode:"
-  say
-  say "  1) Ultra Lean   — custom minimal system prompt (~4.5–5k startup)"
-  say "                   command: claude-lean"
-  say
-  say "  2) Regular Lean — Claude Code default system prompt (~6.5k startup)"
-  say "                   command: claude"
-  say
-  say "  q) Quit"
-  say
+  ui ""
+  ui "========================================"
+  ui "  Claude Code Lean installer"
+  ui "========================================"
+  ui ""
+  ui "Both options install the same lean settings."
+  ui "Enabled tools in both:"
+  ui "  Bash · Read · Write · Edit · WebSearch · WebFetch"
+  ui "Everything else is disabled. Effort = medium."
+  ui ""
+  ui "The ONLY difference is the system prompt:"
+  ui ""
+  ui "  1) Ultra Lean"
+  ui "     - Replaces Claude Code's system prompt with a tiny custom one"
+  ui "     - Lowest startup context (~4.5–5k tokens)"
+  ui "     - Launch with:  claude-lean"
+  ui ""
+  ui "  2) Regular Lean"
+  ui "     - Keeps Claude Code's default lean system prompt"
+  ui "     - Slightly higher startup context (~6.5k tokens)"
+  ui "     - Launch with:  claude"
+  ui ""
+  ui "  q) Quit without installing"
+  ui ""
 
   while true; do
-    printf 'Enter 1, 2, or q: ' >/dev/tty 2>/dev/null || printf 'Enter 1, 2, or q: '
+    ui_n "Choose [1 = Ultra Lean / 2 = Regular Lean / q = Quit]: "
     choice="$(prompt_read)"
     case "$choice" in
-      1|ultra|Ultra|ULTRA) printf 'ultra\n'; return ;;
-      2|regular|Regular|REGULAR) printf 'regular\n'; return ;;
-      q|Q|quit|Quit) say "Cancelled."; exit 0 ;;
-      *) say "Please enter 1, 2, or q." ;;
+      1|ultra|Ultra|ULTRA)
+        SELECTED_MODE="ultra"
+        ui ""
+        ui "→ Selected: Ultra Lean (claude-lean)"
+        return
+        ;;
+      2|regular|Regular|REGULAR)
+        SELECTED_MODE="regular"
+        ui ""
+        ui "→ Selected: Regular Lean (claude)"
+        return
+        ;;
+      q|Q|quit|Quit)
+        ui "Cancelled."
+        exit 0
+        ;;
+      *)
+        ui "Invalid choice. Type 1 for Ultra Lean, 2 for Regular Lean, or q to quit."
+        ;;
     esac
   done
 }
@@ -166,13 +205,12 @@ main() {
   fi
 
   resolve_sources
-  local mode
-  mode="$(choose_mode)"
+  choose_mode
 
-  case "$mode" in
+  case "$SELECTED_MODE" in
     ultra) install_ultra ;;
     regular) install_regular ;;
-    *) err "Unknown mode: $mode" ;;
+    *) err "Unknown mode: $SELECTED_MODE" ;;
   esac
 
   say

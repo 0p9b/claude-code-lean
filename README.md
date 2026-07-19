@@ -8,7 +8,7 @@ Cut Claude Code CLI startup context. Keep six tools. Pick your system prompt.
 curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.sh | bash
 ```
 
-You’ll get an interactive prompt:
+The installer prints a clear menu on your terminal:
 
 | Choice | Command | System prompt | Typical `/context` |
 |---|---|---|---|
@@ -16,6 +16,7 @@ You’ll get an interactive prompt:
 | **2) Regular Lean** | `claude` | Claude Code default lean prompt | ~6.5k |
 
 Same tools either way. Same settings. Only the system prompt differs (~1.8k).
+Type `1`, `2`, or `q` when asked.
 
 Non-interactive (optional):
 
