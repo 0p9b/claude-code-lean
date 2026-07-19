@@ -52,7 +52,7 @@ The prompt file is a single `.` by default (replace if you want a short custom i
 ## Install
 
 ```bash
-git clone https://github.com/<you>/claude-code-lean.git
+git clone https://github.com/0p9b/claude-code-lean.git
 cd claude-code-lean
 chmod +x install.sh bin/claude-lean
 ./install.sh
