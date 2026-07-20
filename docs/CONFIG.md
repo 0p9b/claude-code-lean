@@ -113,7 +113,7 @@ Everything except the six core tools (lean base):
 | **Search** | `Glob`, `Grep` *(enabled in Balanced)* |
 | **Tasks** | `TodoWrite` *(enabled in Balanced)*, `TaskCreate`, `TaskGet`, `TaskList`, `TaskOutput`, `TaskStop`, `TaskUpdate` |
 | **Agents / plan** | `Agent`, `EnterPlanMode`, `ExitPlanMode`, `EnterWorktree`, `ExitWorktree` |
-| **Skills** | `Skill`, `ToolSearch` |
+| **Skills** | `Skill` |
 | **MCP** | `mcp__*`, `ListMcpResourcesTool`, `ReadMcpResourceTool`, `WaitForMcpServers` |
 | **Comms** | `AskUserQuestion`, `SendMessage`, `SendUserMessage`, `SendUserFile`, `PushNotification` |
 | **Other** | `Artifact`, `Brief`, `CronCreate`, `CronDelete`, `CronList`, `DesignSync`, `EndConversation`, `LSP`, `Monitor`, `NotebookEdit`, `PowerShell`, `RemoteTrigger`, `ReportFindings`, `ScheduleWakeup`, `ShareOnboardingGuide`, `Workflow` |

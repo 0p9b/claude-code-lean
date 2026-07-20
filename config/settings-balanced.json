@@ -63,7 +63,6 @@
       "TaskOutput",
       "TaskStop",
       "TaskUpdate",
-      "ToolSearch",
       "WaitForMcpServers",
       "Workflow",
       "mcp__*"

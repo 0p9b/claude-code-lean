@@ -31,7 +31,7 @@ TOOL_PACKS: dict[str, list[str]] = {
         "EnterWorktree",
         "ExitWorktree",
     ],
-    "skills": ["Skill", "ToolSearch"],
+    "skills": ["Skill"],
     "mcp": ["mcp__*", "ListMcpResourcesTool", "ReadMcpResourceTool", "WaitForMcpServers"],
     "comms": [
         "AskUserQuestion",

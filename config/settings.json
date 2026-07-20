@@ -68,7 +68,6 @@
       "TaskStop",
       "TaskUpdate",
       "TodoWrite",
-      "ToolSearch",
       "WaitForMcpServers",
       "Workflow"
     ]

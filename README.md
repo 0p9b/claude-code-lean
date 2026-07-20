@@ -13,7 +13,7 @@ curl -fsSL https://raw.githubusercontent.com/0p9b/claude-code-lean/main/install.
 
 You’ll get an interactive menu → confirm step → install (backs up existing files).
 
-Look for **`Installer version: 2026-07-19-14`**. If GitHub raw looks stale:
+Look for **`Installer version: 2026-07-19-15`**. If GitHub raw looks stale:
 
 ```bash
 git clone --depth 1 https://github.com/0p9b/claude-code-lean.git /tmp/claude-code-lean && bash /tmp/claude-code-lean/install.sh
